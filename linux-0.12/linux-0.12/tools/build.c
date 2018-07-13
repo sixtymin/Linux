@@ -34,7 +34,7 @@
 #define MINIX_HEADER 32
 #define GCC_HEADER 1024
 
-#define SYS_SIZE 0x3000
+#define SYS_SIZE 0x8000
 
 #define DEFAULT_MAJOR_ROOT 3
 #define DEFAULT_MINOR_ROOT 6
@@ -47,6 +47,9 @@
 #define SETUP_SECTS 4
 
 #define STRINGIFY(x) #x
+
+#define MAJOR(a) (((unsigned)(a))>>8)
+#define MINOR(a) ((a)&0xff)
 
 void die(char * str)
 {

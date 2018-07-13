@@ -66,22 +66,22 @@ go:	mov	ax,cs
 
 	mov	ss,ax		! put stack at 0x9ff00 - 12.
 	mov	sp,dx
-/*
- *	Many BIOS's default disk parameter tables will not 
- *	recognize multi-sector reads beyond the maximum sector number
- *	specified in the default diskette parameter tables - this may
- *	mean 7 sectors in some cases.
- *
- *	Since single sector reads are slow and out of the question,
- *	we must take care of this by creating new parameter tables
- *	(for the first disk) in RAM.  We will set the maximum sector
- *	count to 18 - the most we will encounter on an HD 1.44.  
- *
- *	High doesn't hurt.  Low does.
- *
- *	Segments are as follows: ds=es=ss=cs - INITSEG,
- *		fs = 0, gs = parameter table segment
- */
+!/*
+! *	Many BIOS's default disk parameter tables will not 
+! *	recognize multi-sector reads beyond the maximum sector number
+! *	specified in the default diskette parameter tables - this may
+! *	mean 7 sectors in some cases.
+! *
+! *	Since single sector reads are slow and out of the question,
+! *	we must take care of this by creating new parameter tables
+! *	(for the first disk) in RAM.  We will set the maximum sector
+! *	count to 18 - the most we will encounter on an HD 1.44.  
+! *
+! *	High doesn't hurt.  Low does.
+! *
+! *	Segments are as follows: ds=es=ss=cs - INITSEG,
+! *		fs = 0, gs = parameter table segment
+! */
 
 
 	push	#0
@@ -297,18 +297,18 @@ bad_rt:	push	ax				! save error code
 	popa	
 	jmp read_track
 
-/*
- *	print_all is for debugging purposes.  
- *	It will print out all of the registers.  The assumption is that this is
- *	called from a routine, with a stack frame like
- *	dx 
- *	cx
- *	bx
- *	ax
- *	error
- *	ret <- sp
- *
-*/
+!/*
+! *	print_all is for debugging purposes.  
+! *	It will print out all of the registers.  The assumption is that this is
+! *	called from a routine, with a stack frame like
+! *	dx 
+! *	cx
+! *	bx
+! *	ax
+! *	error
+! *	ret <- sp
+! *
+!*/
  
 print_all:
 	mov	cx, #5		! error code + 4 registers
@@ -343,10 +343,10 @@ print_nl:
 	int 	0x10
 	ret
 
-/*
- *	print_hex is for debugging purposes, and prints the word
- *	pointed to by ss:bp in hexadecmial.
-*/
+!/*
+! *	print_hex is for debugging purposes, and prints the word
+! *	pointed to by ss:bp in hexadecmial.
+!*/
 
 print_hex:
 	mov	cx, #4		! 4 hex digits
@@ -367,11 +367,11 @@ good_digit:
 	ret
 
 
-/*
- * This procedure turns off the floppy drive motor, so
- * that we enter the kernel in a known state, and
- * don't have to worry about it later.
- */
+!/*
+! * This procedure turns off the floppy drive motor, so
+! * that we enter the kernel in a known state, and
+! * don't have to worry about it later.
+! */
 kill_motor:
 	push dx
 	mov dx,#0x3f2

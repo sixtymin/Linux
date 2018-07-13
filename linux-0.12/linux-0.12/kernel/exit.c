@@ -66,8 +66,8 @@ int bad_task_ptr(struct task_struct *p)
  * This routine scans the pid tree and make sure the rep invarient still
  * holds.  Used for debugging only, since it's very slow....
  *
- * It looks a lot scarier than it really is.... we're doing ænothing more
- * than verifying the doubly-linked list foundæin p_ysptr and p_osptr, 
+ * It looks a lot scarier than it really is.... we're doing ï¿½nothing more
+ * than verifying the doubly-linked list foundï¿½in p_ysptr and p_osptr, 
  * and checking it corresponds with the process tree defined by p_cptr and 
  * p_pptr;
  */
@@ -259,7 +259,7 @@ static int has_stopped_jobs(int pgrp)
 	return(0);
 }
 
-volatile void do_exit(long code)
+void do_exit(long code)
 {
 	struct task_struct *p;
 	int i;

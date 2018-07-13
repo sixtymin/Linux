@@ -58,7 +58,8 @@ void get_short_int(temp_real * tmp,
 	addr = ea(info,code);
 	ti.a = (signed short) get_fs_word((unsigned short *) addr);
 	ti.b = 0;
-	if (ti.sign = (ti.a < 0))
+	ti.sign = (ti.a < 0);
+	if (ti.sign)
 		ti.a = - ti.a;
 	int_to_real(&ti,tmp);
 }
@@ -72,7 +73,8 @@ void get_long_int(temp_real * tmp,
 	addr = ea(info,code);
 	ti.a = get_fs_long((unsigned long *) addr);
 	ti.b = 0;
-	if (ti.sign = (ti.a < 0))
+	ti.sign = (ti.a < 0);
+	if (ti.sign)
 		ti.a = - ti.a;
 	int_to_real(&ti,tmp);
 }

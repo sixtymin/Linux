@@ -1,16 +1,16 @@
 CC	=gcc
-CFLAGS	=-O -Wall -fstrength-reduce -fcombine-regs -fomit-frame-pointer \
+CFLAGS	=-O -g -Wall -fstrength-reduce -fomit-frame-pointer -fno-builtin \
 	-finline-functions -nostdinc -I../include
-AS	=gas
-AR	=gar
-LD	=gld
+AS	=as
+AR	=ar
+LD	=ld
 CPP	=gcc -E -nostdinc -I../include
 
 .c.o:
 	$(CC) $(CFLAGS) \
-	-c -o $*.o $<
+	 -c -o $*.o $<
 .s.o:
-	$(AS) -o $*.o $<
+	$(AS) -c -o $*.o $<
 .c.s:
 	$(CC) $(CFLAGS) \
 	-S -o $*.s $<

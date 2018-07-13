@@ -1,9 +1,9 @@
-AR	=gar
-AS	=gas
+AR	=ar
+AS	=as
 CC	=gcc
-LD	=gld
-CFLAGS	=-Wall -O -fstrength-reduce -fcombine-regs -fomit-frame-pointer \
-	-fno-defer-pop -mstring-insns -nostdinc -I../include
+LD	=ld
+CFLAGS	=-Wall -O -g -fstrength-reduce -fomit-frame-pointer -fno-stack-protector \
+	-fno-builtin -fno-defer-pop -nostdinc -I../include
 CPP	=gcc -E -nostdinc -I../include
 
 .c.s:
@@ -11,9 +11,9 @@ CPP	=gcc -E -nostdinc -I../include
 	-S -o $*.s $<
 .c.o:
 	$(CC) $(CFLAGS) \
-	-c -o $*.o $<
+	 -c -o $*.o $<
 .s.o:
-	$(AS) -o $*.o $<
+	$(AS) -c -o $*.o $<
 
 OBJS=	open.o read_write.o inode.o file_table.o buffer.o super.o \
 	block_dev.o char_dev.o file_dev.o stat.o exec.o pipe.o namei.o \
