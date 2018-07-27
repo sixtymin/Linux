@@ -1,0 +1,25 @@
+1. 
+
+make: as86: Command not found
+Makefile:97: recipe for target 'boot/bootsect' failed
+make: *** [boot/bootsect] Error 127
+
+> sudo apt install bin86
+
+2. 
+make: gas: Command not found
+Makefile:35: recipe for target 'boot/head.o' failed
+make: *** [boot/head.o] Error 127
+
+> find Makefile, modify gas->as,gld->ld
+
+3. 
+
+ 1 boot/head.s:43: Error: unsupported instruction `mov'
+ 2 boot/head.s:47: Error: unsupported instruction `mov'
+ 3 boot/head.s:59: Error: unsupported instruction `mov'
+ 4 boot/head.s:61: Error: unsupported instruction `mov'
+
+> "as" flags add `--32`  gcc flags add `-32`
+
+4. 
