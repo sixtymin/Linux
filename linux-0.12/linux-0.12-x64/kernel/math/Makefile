@@ -9,17 +9,17 @@
 AR	=ar
 AS	=as
 LD	=ld
-LDFLAGS	=-s -x
+LDFLAGS	=-s -x -m elf_i386 
 CC	=gcc
-CFLAGS	=-Wall -O -fstrength-reduce -fomit-frame-pointer -fcombine-regs \
-	-finline-functions -mstring-insns -nostdinc -I../../include -32
+CFLAGS	=-Wall -O -fstrength-reduce -fomit-frame-pointer -fno-stack-protector\
+	-finline-functions -nostdinc -I../../include -m32 -fno-builtin
 CPP	=gcc -E -nostdinc -I../../include
 
 .c.s:
 	$(CC) $(CFLAGS) \
 	-S -o $*.s $<
 .s.o:
-	$(AS) -c -o $*.o $<
+	$(AS) -c --32 -o $*.o $<
 .c.o:
 	$(CC) $(CFLAGS) \
 	-c -o $*.o $<

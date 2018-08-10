@@ -1,9 +1,9 @@
 1. 
-
 make: as86: Command not found
 Makefile:97: recipe for target 'boot/bootsect' failed
 make: *** [boot/bootsect] Error 127
 
+> 没有安装 as86 程序，安装即可，如下
 > sudo apt install bin86
 
 2. 
@@ -11,15 +11,201 @@ make: gas: Command not found
 Makefile:35: recipe for target 'boot/head.o' failed
 make: *** [boot/head.o] Error 127
 
+> gnu最新的汇编，链接程序已经不叫 gas / gld，而变成了as / ld，修改方法如下：
 > find Makefile, modify gas->as,gld->ld
 
 3. 
-
  1 boot/head.s:43: Error: unsupported instruction `mov'
  2 boot/head.s:47: Error: unsupported instruction `mov'
  3 boot/head.s:59: Error: unsupported instruction `mov'
  4 boot/head.s:61: Error: unsupported instruction `mov'
 
-> "as" flags add `--32`  gcc flags add `-32`
+> 在64位系统下编译程序，默认编译为X64程序，而这里需要编译为x86，修改如下：
+> "as" flags add `--32`  gcc flags add `-m32`
 
 4. 
+boot/head.s: Assembler messages:
+boot/head.s:231: Error: alignment not a power of 2
+Makefile:35: recipe for target 'boot/head.o' failed
+make: *** [boot/head.o] Error 1
+
+> head.s  align 2 -> align 2^2
+
+5. 
+
+gcc: error: unrecognized command line option ‘-fcombine-regs’
+gcc: error: unrecognized command line option ‘-mstring-insns’
+gcc: error: unrecognized command line option ‘-32’
+Makefile|37| recipe for target 'init/main.o' failed
+make: *** [init/main.o] Error 1
+
+>  delete Makefile -fcombine-regs -mstring-insns
+
+6. 
+
+init/main.c:23:29: error: static declaration of ‘fork’ follows non-static declaration
+ static inline _syscall0(int,fork)
+
+> delete static before inline _syscall0(***  	
+
+7. 
+
+init/main.c:179:12: error: static declaration of ‘printf’ follows non-static declaration
+ static int printf(const char *fmt, ...)
+
+> delete static before int printf(const char *fmt, ...)
+
+8. 
+
+init/main.c:176:3: error: ‘asm’ operand has impossible constraints
+   __asm__("int $0x80"::"a" (__NR_pause):"ax");
+
+> delete  __asm__  crash registers, which is in input/output reg list
+
+9. 
+
+ld -r -o kernel.o sched.o sys_call.o traps.o asm.o fork.o panic.o printk.o vsprintf.o sys.o exit.o signal.o mktime.o
+ld: Relocatable linking with relocations from format elf32-i386 (sched.o) to format elf64-x86-64 (kernel.o) is not supported
+
+> add "-m elf_i386" to ld
+
+10. 
+sys.o：在函数‘memset’中：
+sys.c:(.text+0x30d): `memset'被多次定义
+traps.o:traps.c:(.text+0x462)：第一次在此定义
+
+> 之所以出现该错误是这些函数被定义在 .h 文件中，并且使用了 extern
+> 修改方法是查找到所有出现该错误的 函数，将他们在 .h 文件中的定义前的 extern去掉.
+
+
+
+11. 
+linux-0.12-x64/fs/../include/asm/segment.h|27| 错误： b    ad register name `%bpl' 
+
+> gcc内嵌汇编，r表示可以使用任何寄存器，结果编译器选择了bpl寄存器，导致错误，修改如下：
+>将r改为q，限制寄存器只能选择 eax，ebx，ecx，edx
+
+12. 
+/fs/exec.c|162 col 44| error: lvalue requ    ired as left operand of assignment                                                        
+       !(pag = (char *) page[p/PAGE_SIZE] =
+                                          ^
+
+> 连续赋值，编译时出错，修改一下：
+> if ((!page[p/PAGE_SIZE]) && 
+>    !(page[p/PAGE_SIZE] =(unsigned long *) get_free_page()))
+>    return 0;
+> else
+>    pag = (char *) page[p/PAGE_SIZE];
+
+13. 
+kernel/blk_drv/blk_drv.a(hd.o)：在函数‘hd_init’中：
+hd.c:(.text+0xcae)：对‘hd_interrupt’未定义的引用
+hd.c:(.text+0xcba)：对‘idt’未定义的引用
+
+> 类似错误是由于引用汇编代码中的函数或变量，而汇编中使用C编译方式，在名称前加了`_`
+> 解决方法就是在C中引用的汇编中的变量或函数，删除名字前的下划线`_`
+
+> 其次，在汇编中引用的C中的变量名称和函数名称也需要将前面的下划线去掉。
+
+
+14. 
+
+对‘__stack_chk_fail’未定义的引用
+
+> 这是由于gcc编译时会加入栈校验的代码，并且引用校验失败 处理函数
+> 在CFLAGS中加入 -fno-stack-protector 标记，不加入栈保护即可
+
+15.
+
+ld: 警告: 无法找到项目符号 _start; 缺省为 0000000008048098
+
+> gcc 默认以 _start 为编译程序入口，我们这里并没有 _start 函数
+> 需要在Makefile 中指定入口即可
+
+这是因为ld在将所有目标文件链接起来时，不知道程序的入口点在哪里。由内核的启动过程知其从head.s中开始执行，因此给head.s的 .text 段添加一句 .globl startup_32，然后给 ./Makefile 中的ld加上选项 -e startup_32 以指定入口点。
+
+另外注意，仅指定入口点的标号还不够，后续使用tools/build构建Image仍会出错，因为此时程序入口点的地址仍是0x8048098（见上方出错信息的最后一行），而在tools/build.c中处理system模块时，认定的合法入口点地址为0x0：
+
+tools/build.c:  
+157        if ((id=open(argv[3],O_RDONLY,0))<0) 
+158                die("Unable to open 'system'"); 
+159        if (read(id,buf,GCC_HEADER) != GCC_HEADER) 
+160                die("Unable to read header of 'system'");  
+161        if (((long *) buf)[5] != 0)       //判断入口点地址是否为0x0 
+162                die("Non-GCC header of 'system'"); 
+
+因此还需添加 -Ttext 0 选项使startup_32标号对应的地址为0x0（更详细的说明见ld的手册，另有一个讨论见这里）。
+
+
+16. 
+
+kernel/kernel.o：在函数‘schedule’中：
+(.text+0x330)：对‘_current’未定义的引用
+
+
+> 这个错误其实上面有，但是这里单列出来。其实也是汇编中引用C的变量，需要去掉
+> 这个错误不容易找，他们是由于 sched.c中引用了 sched.h中的内联汇编 switch_to()函数造成的
+> 只需要修改即可
+
+17. 
+
+build.c:(.text+0xce)：对‘MAJOR’未定义的引用
+build.c:(.text+0xe8)：对‘MINOR’未定义的引用
+
+> 其实可以在include/linux/fs.h 文件中找到两个宏的定义
+> 但是即使包含了该文进还是有问题，因此可以按照如下改法：
+
+    #define MAJOR(a) (((unsigned)(a))>>8)
+    #define MINOR(a) ((a)&0xff)
+    添加到 tools/build.c 文件中，然后删除 #include <linux/fs.h>
+
+18. 
+
+tools/build boot/bootsect boot/setup tools/system /dev/hd6 > Image /dev/hd6: No such file or directory Couldn't stat root device.
+
+这是因为在源代码顶层目录的Makefile中所指定的根设备为/dev/hd6（代表第二个硬盘的第一个分区）, 而本机上并不存在这个设备所致。Linus当年之所以指定根设备为/dev/hd6, 是因为他把Linux 0.11安装在了机子的第二块硬盘上。我们这里打算通过在bochs中模拟软盘来启动编译好的系统，故在顶层目录Makefile中设定根设备为软盘：
+
+ROOT_DEV=FLOPPY
+SWAP_DEV=
+
+tools/build.c使用Makefile中指定的ROOT_DEV对应的设备号覆盖Image文件中的第509、510字节（即地址508、509处），这两个字节所保存的根设备号将被bootsect.s使用。
+
+19. 
+
+Non-GCC header of 'system'
+Makefile:45: recipe for target 'Image' failed
+
+> gcc编译完后和原来的版本i编译后不同，需要将 GCC头校验去掉
+> 将如下的两行代码注释即可
+
+if (((long *) buf)[5] != 0)
+      die("Non-GCC header of 'system'");
+
+> 由于前面使用 objcopy 将编译后的ELF文件的二进制代码剥离出来了，并且去掉了note和comment段
+> 所以拷贝的 kernel 模块就没有GCC头了，那么如下的读取GCC_HEADER的代码也需要去掉
+> 否则最后拷贝到Image中的内容会少一点
+
+if (read(id,buf,GCC_HEADER) != GCC_HEADER)
+      die("Unable to read header of 'system'");
+
+
+参考：
+
+
+https://www.cnblogs.com/davytitan/p/3964442.html
+https://www.cnblogs.com/welhzh/p/4521196.html
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

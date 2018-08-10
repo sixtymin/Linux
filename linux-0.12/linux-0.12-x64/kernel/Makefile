@@ -9,17 +9,17 @@
 AR	=ar
 AS	=as
 LD	=ld
-LDFLAGS	=-s -x
+LDFLAGS	=-s -x -m elf_i386 
 CC	=gcc
-CFLAGS	=-Wall -O -fstrength-reduce -fomit-frame-pointer -fcombine-regs \
-	-finline-functions -mstring-insns -nostdinc -I../include -32
+CFLAGS	=-Wall -O -fstrength-reduce -fomit-frame-pointer \
+	 -finline-functions -nostdinc -I../include -m32 -fno-builtin -fno-stack-protector
 CPP	=gcc -E -nostdinc -I../include
 
 .c.s:
 	$(CC) $(CFLAGS) \
 	-S -o $*.s $<
 .s.o:
-	$(AS) -c -o $*.o $<
+	$(AS) -c --32 -o $*.o $<
 .c.o:
 	$(CC) $(CFLAGS) \
 	-c -o $*.o $<
@@ -29,7 +29,7 @@ OBJS  = sched.o sys_call.o traps.o asm.o fork.o \
 	signal.o mktime.o
 
 kernel.o: $(OBJS)
-	$(LD) -r -o kernel.o $(OBJS)
+	$(LD) -m elf_i386 -r -o kernel.o $(OBJS)
 	sync
 
 clean:
