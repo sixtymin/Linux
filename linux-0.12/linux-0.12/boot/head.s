@@ -12,7 +12,7 @@
  * the page directory.
  */
 .text
-.globl idt, gdt, pg_dir, tmp_floppy_area
+.globl idt, gdt, pg_dir, tmp_floppy_area, startup_32
 pg_dir:
 startup_32:
 	movl $0x10,%eax

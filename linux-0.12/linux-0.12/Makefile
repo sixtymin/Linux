@@ -9,7 +9,7 @@ LD86	=ld86 -0
 
 AS	=as
 LD	=ld
-LDFLAGS	= -x -M
+LDFLAGS	=-Ttext 0 -e startup_32  
 CC	=gcc $(RAMDISK)
 CFLAGS	=-Wall -O -g -fstrength-reduce -fomit-frame-pointer -fno-builtin
 CPP	=cpp -nostdinc -Iinclude
@@ -43,7 +43,9 @@ all:	Image
 #		$(SWAP_DEV) > Image
 #	sync
 Image: boot/bootsect boot/setup tools/system tools/build
-	tools/build boot/bootsect boot/setup tools/system FLOPPY > Image
+	objcopy -O binary -R .note -R .comment tools/system tools/kernel
+	tools/build boot/bootsect boot/setup tools/kernel FLOPPY > Image
+	rm -f tools/kernel
 	sync	
 
 disk: Image

@@ -43,4 +43,4 @@ com1: enabled=1, mode=null
 com2: enabled=0
 com3: enabled=0
 com4: enabled=0
-gdbstub: enabled=1,port=1234, text_base=0, data_base=0, bss_base=0
+#gdbstub: enabled=1,port=1234, text_base=0, data_base=0, bss_base=0
