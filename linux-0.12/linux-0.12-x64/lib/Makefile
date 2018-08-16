@@ -9,9 +9,9 @@
 AR	=ar
 AS	=as
 LD	=ld
-LDFLAGS	=-s -x -m elf_i386 
-CC	=gcc
-CFLAGS	=-Wall -O -fstrength-reduce -fomit-frame-pointer \
+LDFLAGS	=-m elf_i386 
+CC	=gcc -march=i386
+CFLAGS	=-Wall -O -g -fstrength-reduce -fomit-frame-pointer \
 	-finline-functions -nostdinc -I../include -m32 -fno-builtin -fno-stack-protector
 CPP	=gcc -E -nostdinc -I../include
 

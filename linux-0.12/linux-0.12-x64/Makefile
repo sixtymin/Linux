@@ -9,9 +9,9 @@ LD86	=ld86 -0
 
 AS	=as
 LD	=ld
-LDFLAGS	=-x -M -m elf_i386 -Ttext 0 -e startup_32
-CC	=gcc $(RAMDISK)
-CFLAGS	=-Wall -fno-builtin -O -fstrength-reduce -fomit-frame-pointer -m32 \
+LDFLAGS	=-m elf_i386 -Ttext 0 -e startup_32
+CC	=gcc -march=i386 $(RAMDISK)
+CFLAGS	=-Wall -fno-builtin -O -g -fstrength-reduce -fomit-frame-pointer -m32 \
 	 -fno-stack-protector
 
 CPP	=cpp -nostdinc -Iinclude
@@ -51,7 +51,8 @@ Image: boot/bootsect boot/setup tools/system tools/build
 	sync
 
 disk: Image
-	dd bs=8192 if=Image of=/dev/PS0
+	dd bs=8192 if=Image of=./a.img
+	#dd bs=8192 if=Image of=/dev/PS0
 
 tools/build: tools/build.c
 	$(CC) $(CFLAGS) \

@@ -62,10 +62,12 @@ go:	mov	ax,cs
 
 	mov	ds,ax
 	mov	es,ax
-	push	ax
 
+	!push	ax
 	mov	ss,ax		! put stack at 0x9ff00 - 12.
 	mov	sp,dx
+
+	push	ax
 /*
  *	Many BIOS's default disk parameter tables will not 
  *	recognize multi-sector reads beyond the maximum sector number

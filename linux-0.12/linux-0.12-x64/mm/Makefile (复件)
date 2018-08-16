@@ -1,6 +1,6 @@
-CC	=gcc -march=i386 
+CC	=gcc 
 CFLAGS	=-O -g -Wall -fstrength-reduce -fomit-frame-pointer \
-	-nostdinc -I../include -m32 -fno-builtin -fno-stack-protector
+	-finline-functions -nostdinc -I../include -m32 -fno-builtin -fno-stack-protector
 AS	=as
 AR	=ar
 LD	=ld -m elf_i386 

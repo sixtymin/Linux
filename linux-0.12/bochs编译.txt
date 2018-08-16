@@ -1,0 +1,32 @@
+
+1. 首先安装必要的编译环境
+
+bochs-2.6.8$ sudo apt-get install build-essential  
+bochs-2.6.8$ sudo apt-get install xorg-dev        -->这个必须安装
+bochs-2.6.8$ sudo apt-get install libgtk2.0-dev
+
+
+2. 进行配置
+
+编译带asm调试功能的bochs
+
+bochs-2.6.8_asm$ ./configure --enable-debugger --enable-disasm
+
+
+编译带gdb调试功能的bochs
+
+bochs-2.6.8_gdb$ ./configure --enable-disasm --enable-gdb-stub
+
+
+3. 编译安装
+
+设置完配置后，直接执行 make即可进行编译。
+
+编译完成后，执行 sudo make install 进行安装
+
+
+//////////////////////////////////////////////////////////////////
+gdb+bochs调试linux0.11的总出现缺页中断问题
+
+以上出自《gdb+bochs调试linux0.11的总出现缺页中断问题。》
+http://blog.chinaunix.net/uid-7480243-id-2051574.html
