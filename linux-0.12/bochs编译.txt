@@ -1,3 +1,5 @@
+//////////////////////////////////////////////////////////////////
+// 单一版本安装
 
 1. 首先安装必要的编译环境
 
@@ -24,6 +26,40 @@ bochs-2.6.8_gdb$ ./configure --enable-disasm --enable-gdb-stub
 
 编译完成后，执行 sudo make install 进行安装
 
+///////////////////////////////////////////////////////////////////
+
+由于 debugger功能和 gdb stub功能不能同时编译到一个文件中，因此如果要同时用到两个
+就可以编译两个版本，分别放到不同的目录。
+
+编译两份不同的配置的版本
+1. 第一个的版本为使用bochs自带的内部调试器
+	./configure --prefix=/opt/bochs/debug --enable-plugins --enable-debugger --enable-disasm
+        注释：
+              * --prefix=/opt/bochs/debug 软件将被安装到哪个目录下
+              * --enable-plugins 是必须要的
+              * --enable-debugger 是打开bochs的自带调试器
+              * --enbale-disasm 允许反汇编
+   安装该版本
+	sudo make install
+   加一个符号连接，这样可以直接使用
+
+        sudo ln -s /opt/bochs/debug/ bin /bochs /usr/bin/bochsdbg 
+
+2. 第二个版本为使用 gdb -stub的版本
+
+    清理
+        在配置第二个版本之前，需要把刚才编译的东西清理掉，输入以下 命令 ：
+        make clean
+    配置
+        然后配置，配置命令为
+        ./configure --prefix=/opt/bochs/gdbstub --enable-plugins --enable-disasm --enable-           gdb-stub
+        配置注释：
+        * --enable-gdb-stub 打开gdb stub支持
+        * 其他选项同上，注意这个不同版本会安装到不同的目录下。
+    安装
+        sudo make install // 这样bochs使用外部调试器gdb的版本就编译好了。
+    建一个符号链接
+        sudo ln -s /opt/bochs/gdbstub/bin/bochs  /usr/bin/bochs 
 
 //////////////////////////////////////////////////////////////////
 gdb+bochs调试linux0.11的总出现缺页中断问题
