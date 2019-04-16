@@ -171,7 +171,7 @@ int swap_out(void)
  */
 unsigned long get_free_page(void)
 {
-register unsigned long __res asm("ax");
+register unsigned long __res;// asm("ax");
 
 repeat:
 	__asm__("std ; repne ; scasb\n\t"
@@ -188,7 +188,7 @@ repeat:
 		:"=a" (__res)
 		:"0" (0),"i" (LOW_MEM),"c" (PAGING_PAGES),
 		"D" (mem_map+PAGING_PAGES-1)
-		:"dx");
+		);
 	if (__res >= HIGH_MEMORY)
 		goto repeat;
 	if (!__res && swap_out())

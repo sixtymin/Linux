@@ -285,7 +285,7 @@ __asm__("cld\n\t" \
 	"rep\n\t" \
 	"movsl\n\t" \
 	::"c" (BLOCK_SIZE/4),"S" (from),"D" (to) \
-	:)
+	)
 
 /*
  * bread_page reads four buffers into memory at the desired address. It's
@@ -333,7 +333,7 @@ struct buffer_head * breada(int dev,int first, ...)
 		tmp=getblk(dev,first);
 		if (tmp) {
 			if (!tmp->b_uptodate)
-				ll_rw_block(READA,bh);
+				ll_rw_block(READA, tmp); // bug ĞŞ¸´£¬bhÓ¦¸ÃÎª tmp
 			tmp->b_count--;
 		}
 	}

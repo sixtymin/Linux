@@ -1,16 +1,16 @@
-CC	=gcc -march=i386 
-CFLAGS	=-O -g -Wall -fstrength-reduce -fomit-frame-pointer \
-	-nostdinc -I../include -m32 -fno-builtin -fno-stack-protector
-AS	=as
+CC	=gcc-3.4
+CFLAGS	=-g -m32 -O -Wall -fstrength-reduce -fomit-frame-pointer \
+	-finline-functions -nostdinc -I../include
+AS	=as --32
 AR	=ar
-LD	=ld -m elf_i386 
-CPP	=gcc -E -nostdinc -I../include
+LD	=ld -m elf_i386
+CPP	=cpp -E -nostdinc -I../include
 
 .c.o:
 	$(CC) $(CFLAGS) \
 	-c -o $*.o $<
 .s.o:
-	$(AS) --32 -o $*.o $<
+	$(AS) -o $*.o $<
 .c.s:
 	$(CC) $(CFLAGS) \
 	-S -o $*.s $<

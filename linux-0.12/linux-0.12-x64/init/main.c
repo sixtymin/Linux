@@ -20,10 +20,10 @@
  * won't be any messing with the stack from main(), but we define
  * some others too.
  */
-inline _syscall0(int,fork)
-inline _syscall0(int,pause)
-inline _syscall1(int,setup,void *,BIOS)
-inline _syscall0(int,sync)
+static inline _syscall0(int,fork)
+static inline _syscall0(int,pause)
+static inline _syscall1(int,setup,void *,BIOS)
+static inline _syscall0(int,sync)
 
 #include <linux/tty.h>
 #include <linux/sched.h>
@@ -173,10 +173,10 @@ void main(void)		/* This really IS void, no error here. */
  * task can run, and if not we return here.
  */
 	for(;;)
-		__asm__("int $0x80"::"a" (__NR_pause):);
+		__asm__("int $0x80"::"a" (__NR_pause));
 }
 
-int printfa(const char *fmt, ...)
+static int printf(const char *fmt, ...)
 {
 	va_list args;
 	int i;
@@ -195,9 +195,9 @@ void init(void)
 	(void) open("/dev/tty1",O_RDWR,0);
 	(void) dup(0);
 	(void) dup(0);
-	printfa("%d buffers = %d bytes buffer space\n\r",NR_BUFFERS,
+	printf("%d buffers = %d bytes buffer space\n\r",NR_BUFFERS,
 		NR_BUFFERS*BLOCK_SIZE);
-	printfa("Free mem: %d bytes\n\r",memory_end-main_memory_start);
+	printf("Free mem: %d bytes\n\r",memory_end-main_memory_start);
 	if (!(pid=fork())) {
 		close(0);
 		if (open("/etc/rc",O_RDONLY,0))
@@ -210,7 +210,7 @@ void init(void)
 			/* nothing */;
 	while (1) {
 		if ((pid=fork())<0) {
-			printfa("Fork failed in init\r\n");
+			printf("Fork failed in init\r\n");
 			continue;
 		}
 		if (!pid) {
@@ -224,7 +224,7 @@ void init(void)
 		while (1)
 			if (pid == wait(&i))
 				break;
-		printfa("\n\rchild %d died with code %04x\n\r",pid,i);
+		printf("\n\rchild %d died with code %04x\n\r",pid,i);
 		sync();
 	}
 	_exit(0);	/* NOTE! _exit, not exit() */

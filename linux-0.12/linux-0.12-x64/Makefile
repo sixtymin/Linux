@@ -7,13 +7,11 @@ RAMDISK = #-DRAMDISK=512
 AS86	=as86 -0 -a
 LD86	=ld86 -0
 
-AS	=as
+AS	=as --32
 LD	=ld
-LDFLAGS	=-m elf_i386 -Ttext 0 -e startup_32
-CC	=gcc -march=i386 $(RAMDISK)
-CFLAGS	=-Wall -fno-builtin -O -g -fstrength-reduce -fomit-frame-pointer -m32 \
-	 -fno-stack-protector
-
+LDFLAGS	=-m elf_i386 -M -Ttext 0 -e startup_32  #-s -x -M
+CC	=gcc-3.4 $(RAMDISK)
+CFLAGS	=-m32 -g -Wall -O -fstrength-reduce -fomit-frame-pointer -fno-builtin
 CPP	=cpp -nostdinc -Iinclude
 
 #
@@ -21,9 +19,8 @@ CPP	=cpp -nostdinc -Iinclude
 # This can be either FLOPPY, /dev/xxxx or empty, in which case the
 # default of /dev/hd6 is used by 'build'.
 #
-ROOT_DEV=FLOPPY
-#SWAP_DEV=/dev/hd2
-SWAP_DEV=
+ROOT_DEV=#/dev/hd6
+SWAP_DEV=#/dev/hd2
 
 ARCHIVES=kernel/kernel.o mm/mm.o fs/fs.o
 DRIVERS =kernel/blk_drv/blk_drv.a kernel/chr_drv/chr_drv.a
@@ -34,25 +31,24 @@ LIBS	=lib/lib.a
 	$(CC) $(CFLAGS) \
 	-nostdinc -Iinclude -S -o $*.s $<
 .s.o:
-	$(AS) -c --32 -o $*.o $<
+	$(AS) -o $*.o $<
 .c.o:
 	$(CC) $(CFLAGS) \
 	-nostdinc -Iinclude -c -o $*.o $<
 
 all:	Image
 
-#Image: boot/bootsect boot/setup tools/system tools/build
-#	tools/build boot/bootsect boot/setup tools/system $(ROOT_DEV) \
-#		$(SWAP_DEV) > Image
 Image: boot/bootsect boot/setup tools/system tools/build
-	objcopy -O binary -R .note -R .comment tools/system tools/kernel
-	tools/build boot/bootsect boot/setup tools/kernel $(ROOT_DEV) \
-		$(SWAP_DEV) > Image
+	cp -f tools/system system.tmp
+	strip system.tmp
+	objcopy -O binary -R .note -R .comment system.tmp tools/kernel
+	tools/build boot/bootsect boot/setup tools/kernel $(ROOT_DEV) $(SWAP_DEV) > Image
+	rm system.tmp
+	rm tools/kernel -f
 	sync
 
 disk: Image
-	dd bs=8192 if=Image of=./a.img
-	#dd bs=8192 if=Image of=/dev/PS0
+	dd bs=8192 if=Image of=/dev/PS0
 
 tools/build: tools/build.c
 	$(CC) $(CFLAGS) \
@@ -107,7 +103,7 @@ boot/bootsect:	boot/bootsect.s
 clean:
 	rm -f Image System.map tmp_make core boot/bootsect boot/setup \
 		boot/bootsect.s boot/setup.s
-	rm -f init/*.o tools/system tools/build boot/*.o tools/kernel
+	rm -f init/*.o tools/system tools/build boot/*.o
 	(cd mm;make clean)
 	(cd fs;make clean)
 	(cd kernel;make clean)

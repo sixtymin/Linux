@@ -1,40 +1,40 @@
-inline unsigned char get_fs_byte(const char * addr)
+extern inline unsigned char get_fs_byte(const char * addr)
 {
 	unsigned register char _v;
 
-	__asm__ ("movb %%fs:%1,%0":"=q" (_v):"m" (*addr));
+	__asm__ ("movb %%fs:%1,%0":"=r" (_v):"m" (*addr));
 	return _v;
 }
 
-inline unsigned short get_fs_word(const unsigned short *addr)
+extern inline unsigned short get_fs_word(const unsigned short *addr)
 {
 	unsigned short _v;
 
-	__asm__ ("movw %%fs:%1,%0":"=q" (_v):"m" (*addr));
+	__asm__ ("movw %%fs:%1,%0":"=r" (_v):"m" (*addr));
 	return _v;
 }
 
-inline unsigned long get_fs_long(const unsigned long *addr)
+extern inline unsigned long get_fs_long(const unsigned long *addr)
 {
 	unsigned long _v;
 
-	__asm__ ("movl %%fs:%1,%0":"=q" (_v):"m" (*addr)); \
+	__asm__ ("movl %%fs:%1,%0":"=r" (_v):"m" (*addr)); 
 	return _v;
 }
 
-inline void put_fs_byte(char val,char *addr)
+extern inline void put_fs_byte(char val,char *addr)
 {
-__asm__ ("movb %0,%%fs:%1"::"q" (val),"m" (*addr));
+__asm__ ("movb %0,%%fs:%1"::"r" (val),"m" (*addr));
 }
 
-inline void put_fs_word(short val,short * addr)
+extern inline void put_fs_word(short val,short * addr)
 {
-__asm__ ("movw %0,%%fs:%1"::"q" (val),"m" (*addr));
+__asm__ ("movw %0,%%fs:%1"::"r" (val),"m" (*addr));
 }
 
-inline void put_fs_long(unsigned long val,unsigned long * addr)
+extern inline void put_fs_long(unsigned long val,unsigned long * addr)
 {
-__asm__ ("movl %0,%%fs:%1"::"q" (val),"m" (*addr));
+__asm__ ("movl %0,%%fs:%1"::"r" (val),"m" (*addr));
 }
 
 /*
@@ -44,21 +44,21 @@ __asm__ ("movl %0,%%fs:%1"::"q" (val),"m" (*addr));
  * [ nothing wrong here, Linus ]
  */
 
-inline unsigned long get_fs() 
+extern inline unsigned long get_fs() 
 {
 	unsigned short _v;
 	__asm__("mov %%fs,%%ax":"=a" (_v):);
 	return _v;
 }
 
-inline unsigned long get_ds() 
+extern inline unsigned long get_ds() 
 {
 	unsigned short _v;
 	__asm__("mov %%ds,%%ax":"=a" (_v):);
 	return _v;
 }
 
-inline void set_fs(unsigned long val)
+extern inline void set_fs(unsigned long val)
 {
 	__asm__("mov %0,%%fs"::"a" ((unsigned short) val));
 }

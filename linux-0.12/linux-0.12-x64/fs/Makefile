@@ -1,10 +1,10 @@
 AR	=ar
-AS	=as
-CC	=gcc -march=i386
-LD	=ld -m elf_i386 
-CFLAGS	=-Wall -O -g -fstrength-reduce -fomit-frame-pointer \
-	-fno-defer-pop -nostdinc -I../include -m32 -fno-builtin -fno-stack-protector
-CPP	=gcc -E -nostdinc -I../include
+AS	=as --32
+CC	=gcc-3.4
+LD	=ld -m elf_i386
+CFLAGS	=-g -m32 -Wall -O -fstrength-reduce -fomit-frame-pointer \
+	-fno-defer-pop -nostdinc -I../include
+CPP	=cpp -E -nostdinc -I../include
 
 .c.s:
 	$(CC) $(CFLAGS) \
@@ -13,7 +13,7 @@ CPP	=gcc -E -nostdinc -I../include
 	$(CC) $(CFLAGS) \
 	-c -o $*.o $<
 .s.o:
-	$(AS) --32 -o $*.o $<
+	$(AS) -o $*.o $<
 
 OBJS=	open.o read_write.o inode.o file_table.o buffer.o super.o \
 	block_dev.o char_dev.o file_dev.o stat.o exec.o pipe.o namei.o \

@@ -42,7 +42,7 @@ current->start_code + current->end_code)
 unsigned long HIGH_MEMORY = 0;
 
 #define copy_page(from,to) \
-__asm__("cld ; rep ; movsl"::"S" (from),"D" (to),"c" (1024):)
+__asm__("cld ; rep ; movsl"::"S" (from),"D" (to),"c" (1024))
 
 unsigned char mem_map [ PAGING_PAGES ] = {0,};
 
@@ -498,5 +498,5 @@ void show_mem(void)
 			k = 0;
 		}
 	}
-	printk("Memory found: %d (%d)\n\r",free-shared,total);
+	printk("Memory found: %d (%d)\n\r\n\r",free-shared,total);
 }

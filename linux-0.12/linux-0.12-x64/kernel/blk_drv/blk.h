@@ -107,7 +107,7 @@ int DEVICE_TIMEOUT = 0;
 #endif
 static void (DEVICE_REQUEST)(void);
 
-inline void unlock_buffer(struct buffer_head * bh)
+extern inline void unlock_buffer(struct buffer_head * bh)
 {
 	if (!bh->b_lock)
 		printk(DEVICE_NAME ": free buffer being unlocked\n");
@@ -115,7 +115,7 @@ inline void unlock_buffer(struct buffer_head * bh)
 	wake_up(&bh->b_wait);
 }
 
-inline void end_request(int uptodate)
+extern inline void end_request(int uptodate)
 {
 	DEVICE_OFF(CURRENT->dev);
 	if (CURRENT->bh) {
