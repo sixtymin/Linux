@@ -42,7 +42,7 @@ Image: boot/bootsect boot/setup tools/system tools/build
 	cp -f tools/system system.tmp
 	strip system.tmp
 	objcopy -O binary -R .note -R .comment system.tmp tools/kernel
-	tools/build boot/bootsect boot/setup tools/kernel $(ROOT_DEV) $(SWAP_DEV) > Image
+	tools/build boot/bootsect boot/setup tools/kernel FLOPPY  > Image
 	rm system.tmp
 	rm tools/kernel -f
 	sync
