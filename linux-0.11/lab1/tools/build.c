@@ -18,8 +18,6 @@
 
 /*
  * Changes by tytso to allow root device specification
- *
- * Added swap-device specification: Linux 20.12.91
  */
 
 #include <stdio.h>	/* fprintf */
@@ -31,6 +29,12 @@
 #include <unistd.h>	/* contains read/write */
 #include <fcntl.h>
 
+/*
+ * Changes by falcon<zhangjinw@gmail.com> to define MAJOR and MINOR for they
+ * are not defined in current linux header file linux/fs.h,I copy it from
+ * include/linux/fs.h directly.
+ */
+
 #ifndef MAJOR
 	#define MAJOR(a) (((unsigned)(a))>>8)
 #endif
@@ -38,16 +42,24 @@
 	#define MINOR(a) ((a)&0xff)
 #endif
 
-#define MINIX_HEADER 	32		
-#define GCC_HEADER 		1024
+#define MINIX_HEADER 32
+#define GCC_HEADER 1024
 
 #define SYS_SIZE 0x3000
 
-#define DEFAULT_MAJOR_ROOT 0x03 
-#define DEFAULT_MINOR_ROOT 0x06
+/*
+ * Changes by falcon<zhangjinw@gmail.com> to let this kernel Image file boot
+ * with a root image file on the first hardware device /dev/hd1, hence, you
+ * should prepare a root image file, and configure the bochs with
+ * the following lines(please set the ... as suitable info):
+ * 	...
+ *      floppya: 1_44="Image", status=inserted
+ *      ata0-master: type=disk, path="/path/to/rootimage.img", mode=flat ...
+ *      ...
+ */
 
-#define DEFAULT_MAJOR_SWAP 0
-#define DEFAULT_MINOR_SWAP 0
+#define DEFAULT_MAJOR_ROOT 3
+#define DEFAULT_MINOR_ROOT 1
 
 /* max nr of sectors of setup: don't change unless you also change
  * bootsect etc */
@@ -71,12 +83,11 @@ int main(int argc, char ** argv)
 	int i,c,id;
 	char buf[1024];
 	char major_root, minor_root;
-	char major_swap, minor_swap;
 	struct stat sb;
 
-	if ((argc < 4) || (argc > 6))
+	if (argc != 3)
 		usage();
-	if (argc > 4) {
+	if (argc == 5) {
 		if (strcmp(argv[4], "FLOPPY")) {
 			if (stat(argv[4], &sb)) {
 				perror(argv[4]);
@@ -92,33 +103,11 @@ int main(int argc, char ** argv)
 		major_root = DEFAULT_MAJOR_ROOT;
 		minor_root = DEFAULT_MINOR_ROOT;
 	}
-	if (argc == 6) {
-		if (strcmp(argv[5], "NONE")) {
-			if (stat(argv[5], &sb)) {
-				perror(argv[5]);
-				die("Couldn't stat root device.");
-			}
-			major_swap = MAJOR(sb.st_rdev);
-			minor_swap = MINOR(sb.st_rdev);
-		} else {
-			major_swap = 0;
-			minor_swap = 0;
-		}
-	} else {
-		major_swap = DEFAULT_MAJOR_SWAP;
-		minor_swap = DEFAULT_MINOR_SWAP;
-	}
 	fprintf(stderr, "Root device is (%d, %d)\n", major_root, minor_root);
-	fprintf(stderr, "Swap device is (%d, %d)\n", major_swap, minor_swap);
 	if ((major_root != 2) && (major_root != 3) &&
 	    (major_root != 0)) {
 		fprintf(stderr, "Illegal root device (major = %d)\n",
 			major_root);
-		die("Bad root device --- major #");
-	}
-	if (major_swap && major_swap != 3) {
-		fprintf(stderr, "Illegal swap device (major = %d)\n",
-			major_swap);
 		die("Bad root device --- major #");
 	}
 	for (i=0;i<sizeof buf; i++) buf[i]=0;
@@ -144,8 +133,6 @@ int main(int argc, char ** argv)
 		die("Boot block must be exactly 512 bytes");
 	if ((*(unsigned short *)(buf+510)) != 0xAA55)
 		die("Boot block hasn't got boot flag (0xAA55)");
-	buf[506] = (char) minor_swap;
-	buf[507] = (char) major_swap;
 	buf[508] = (char) minor_root;
 	buf[509] = (char) major_root;	
 	i=write(1,buf,512);
@@ -188,20 +175,18 @@ int main(int argc, char ** argv)
 		i += c;
 	}
 	
-	if ((id=open(argv[3],O_RDONLY,0))<0)
-		die("Unable to open 'system'");
-    /*
-	if (read(id,buf,GCC_HEADER) != GCC_HEADER)
-		die("Unable to read header of 'system'");
-	if (((long *) buf)[5] != 0)
-		die("Non-GCC header of 'system'");
-	*/
-	for (i=0 ; (c=read(id,buf,sizeof buf))>0 ; i+=c )
-		if (write(1,buf,c)!=c)
-			die("Write call failed");
-	close(id);
-	fprintf(stderr,"System is %d bytes.\n",i);
-	if (i > SYS_SIZE*16)
-		die("System is too big");
+//	if ((id=open(argv[3],O_RDONLY,0))<0)
+//		die("Unable to open 'system'");
+//	if (read(id,buf,GCC_HEADER) != GCC_HEADER)
+//		die("Unable to read header of 'system'");
+//	if (((long *) buf)[5] != 0)
+//		die("Non-GCC header of 'system'");
+//	for (i=0 ; (c=read(id,buf,sizeof buf))>0 ; i+=c )
+//		if (write(1,buf,c)!=c)
+//			die("Write call failed");
+//	close(id);
+//	fprintf(stderr,"System is %d bytes.\n",i);
+//	if (i > SYS_SIZE*16)
+//		die("System is too big");
 	return(0);
 }
