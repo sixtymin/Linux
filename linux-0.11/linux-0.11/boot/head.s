@@ -10,26 +10,30 @@
  * NOTE!!! Startup happens at absolute address 0x00000000, which is also where
  * the page directory will exist. The startup code will be overwritten by
  * the page directory.
+ * head.s 包含了 32位的起始代码.
+ * 注意: 起始代码恰好位于绝对地址 0x00000000,这里也是页目录将要存放的地方
+ * 因此代码会被页目录复写
  */
 .text
 .globl idt,gdt,pg_dir,tmp_floppy_area
 pg_dir:
 .globl startup_32
 startup_32:
-	movl $0x10,%eax
+	movl $0x10,%eax         # 从这里开始是 AT&T 汇编
 	mov %ax,%ds
 	mov %ax,%es
 	mov %ax,%fs
-	mov %ax,%gs
-	lss stack_start,%esp
-	call setup_idt
+	mov %ax,%gs             # 重置段寄存器,数据段
+	lss stack_start,%esp    # 设置栈顶
+	call setup_idt          # 重置IDT GDT
 	call setup_gdt
 	movl $0x10,%eax		# reload all the segment registers
 	mov %ax,%ds		# after changing gdt. CS was already
 	mov %ax,%es		# reloaded in 'setup_gdt'
-	mov %ax,%fs
+	mov %ax,%fs             # 再一次重置数据段,因为setup_gdt中重新加载了CS       
 	mov %ax,%gs
-	lss stack_start,%esp
+	lss stack_start,%esp    
+	# 检查 A20 地址线是否已开启,如果没有开启,则访问时自动回环到 0x0000000
 	xorl %eax,%eax
 1:	incl %eax		# check that A20 really IS enabled
 	movl %eax,0x000000	# loop forever if it isn't
@@ -52,6 +56,7 @@ startup_32:
 
 /*
  * We depend on ET to be correct. This checks for 287/387.
+ * 检查 287/387,依赖于 ET 位
  */
 check_x87:
 	fninit
@@ -76,6 +81,8 @@ check_x87:
  *  are enabled elsewhere, when we can be relatively
  *  sure everything is ok. This routine will be over-
  *  written by the page tables.
+ *  将256个IDT条目设置为 ignore_int ,最后加载IDT
+ *  想要安装中断的地方自己设置,中段开启在其他地方.
  */
 setup_idt:
 	lea ignore_int,%edx
@@ -103,6 +110,7 @@ rp_sidt:
  *  is VERY complicated at two whole lines, so this
  *  rather long comment is certainly needed :-).
  *  This routine will beoverwritten by the page tables.
+ *  该函数将心的 gdt表加载到GDTR中,当前只构建了两个项目
  */
 setup_gdt:
 	lgdt gdt_descr
@@ -112,6 +120,8 @@ setup_gdt:
  * I put the kernel page tables right after the page directory,
  * using 4 of them to span 16 Mb of physical memory. People with
  * more than 16MB will have to expand this.
+ * 将内核页表放到 页目录之后,使用他们中的四个,标记 16M的物理内存
+ * 如果要使用多于 16MB 内存,则需要扩展这里的页表
  */
 .org 0x1000
 pg0:
@@ -139,7 +149,7 @@ after_page_tables:
 	pushl $0
 	pushl $0
 	pushl $L6		# return address for main, if it decides to.
-	pushl $main
+	pushl $main             # 压入参数,作为main函数的参数以及返回地址
 	jmp setup_paging
 L6:
 	jmp L6			# main should never return here, but
@@ -195,29 +205,33 @@ ignore_int:
  * I've tried to show which constants to change by having
  * some kind of marker at them (search for "16Mb"), but I
  * won't guarantee that's all :-( )
+ * 这个函数用于设置分页,设置CR0中的PG 位,建立页表,将物理地址的
+ * 前16M物理内存一一映射.
  */
 .align 2
 setup_paging:
 	movl $1024*5,%ecx		/* 5 pages - pg_dir+4 page tables */
-	xorl %eax,%eax
-	xorl %edi,%edi			/* pg_dir is at 0x000 */
+	xorl %eax,%eax                  /* 这里一共处理 5 页内容*/
+	xorl %edi,%edi			/* pg_dir is at 0x000 所有内容清空 */
 	cld;rep;stosl
 	movl $pg0+7,pg_dir		/* set present bit/user r/w */
 	movl $pg1+7,pg_dir+4		/*  --------- " " --------- */
 	movl $pg2+7,pg_dir+8		/*  --------- " " --------- */
 	movl $pg3+7,pg_dir+12		/*  --------- " " --------- */
-	movl $pg3+4092,%edi
+	/* 这里只需要在页目录设置四个页表*/
+	movl $pg3+4092,%edi             
 	movl $0xfff007,%eax		/*  16Mb - 4096 + 7 (r/w user,p) */
 	std
-1:	stosl			/* fill pages backwards - more efficient :-) */
+1:	stosl			/* 反向填充页表,更有效率 :-) */
 	subl $0x1000,%eax
 	jge 1b
+
 	xorl %eax,%eax		/* pg_dir is at 0x0000 */
 	movl %eax,%cr3		/* cr3 - page directory start */
 	movl %cr0,%eax
 	orl $0x80000000,%eax
-	movl %eax,%cr0		/* set paging (PG) bit */
-	ret			/* this also flushes prefetch-queue */
+	movl %eax,%cr0		/* set paging (PG) bit 设置开启分页位 PG */
+	ret			/* this also flushes prefetch-queue 使用前面的压栈,返回到main中继续执行 */
 
 .align 2
 .word 0

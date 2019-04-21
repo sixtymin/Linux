@@ -105,26 +105,26 @@ void main(void)		/* This really IS void, no error here. */
 {			/* The startup routine assumes (well, ...) this */
 /*
  * Interrupts are still disabled. Do necessary setups, then
- * enable them
+ * enable them 中断依然是关闭的,做必要的初始化,然后开启中断
  */
- 	ROOT_DEV = ORIG_ROOT_DEV;
- 	drive_info = DRIVE_INFO;
-	memory_end = (1<<20) + (EXT_MEM_K<<10);
-	memory_end &= 0xfffff000;
+ 	ROOT_DEV = ORIG_ROOT_DEV; // 引导扇区中设定的 根目录 所在设备号
+ 	drive_info = DRIVE_INFO;  // 将 hd0 的参数(setup中获取)复制到 drive_info中
+	memory_end = (1<<20) + (EXT_MEM_K<<10); 
+	memory_end &= 0xfffff000; // 将可用物理内存结尾设置到 memory_end中,并4K对齐
 	if (memory_end > 16*1024*1024)
 		memory_end = 16*1024*1024;
-	if (memory_end > 12*1024*1024) 
+	if (memory_end > 12*1024*1024)   // 根据物理内存的大小,设置缓存 内存的大小
 		buffer_memory_end = 4*1024*1024;
 	else if (memory_end > 6*1024*1024)
 		buffer_memory_end = 2*1024*1024;
 	else
 		buffer_memory_end = 1*1024*1024;
-	main_memory_start = buffer_memory_end;
+	main_memory_start = buffer_memory_end; // 主存从缓存内存之后开始
 #ifdef RAMDISK
 	main_memory_start += rd_init(main_memory_start, RAMDISK*1024);
 #endif
-	mem_init(main_memory_start,memory_end);
-	trap_init();
+	mem_init(main_memory_start,memory_end);// 初始化内存
+	trap_init();   // 初始化中断函数,并开启中断
 	blk_dev_init();
 	chr_dev_init();
 	tty_init();

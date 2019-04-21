@@ -10,13 +10,16 @@
 ! boot-block used to be. It is then up to the protected mode
 ! system to read them from there before the area is overwritten
 ! for buffer-blocks.
-!
+! 前面bootsect已经将system和 setup加载到内存了
+! setup 负责从BIOS 中获取系统数据,将他们放到适当的系统内存中
+! 代码从BIOS 中查找 内存,磁盘和其他的参数信息,将他们放到安全地方
+! 0x90000-0x901FF,即bootset移动后占据的内存
+! 这段内存在进入保护模式后依然可以读,直到缓存块将这块复写
 
 ! NOTE! These had better be the same as in bootsect.s!
-
-INITSEG  = 0x9000	! we move boot here - out of the way
-SYSSEG   = 0x1000	! system loaded at 0x10000 (65536).
-SETUPSEG = 0x9020	! this is the current segment
+INITSEG  = 0x9000	! we move boot here - out of the way 引导扇区占据,现在已经不用了
+SYSSEG   = 0x1000	! system loaded at 0x10000 (65536).  system莫夸加载位置
+SETUPSEG = 0x9020	! this is the current segment 当前段
 
 .globl begtext, begdata, begbss, endtext, enddata, endbss
 .text
@@ -31,29 +34,26 @@ entry start
 start:
 
 ! ok, the read went well so we get current cursor position and save it for
-! posterity.
+! posterity. 读取当前光标位置,将它保存在内存中
 
 	mov	ax,#INITSEG	! this is done in bootsect already, but...
 	mov	ds,ax
+
 	mov	ah,#0x03	! read cursor pos
 	xor	bh,bh
 	int	0x10		! save it in known place, con_init fetches
 	mov	[0],dx		! it from 0x90000.
-! Get memory size (extended mem, kB)
 
-	mov	ah,#0x88
+	mov	ah,#0x88        ! Get memory size (extended mem, kB)
 	int	0x15
 	mov	[2],ax
 
-! Get video-card data:
-
-	mov	ah,#0x0f
+	mov	ah,#0x0f        ! Get video-card data:
 	int	0x10
 	mov	[4],bx		! bh = display page
 	mov	[6],ax		! al = video mode, ah = window width
 
 ! check for EGA/VGA and some config parameters
-
 	mov	ah,#0x12
 	mov	bl,#0x10
 	int	0x10
@@ -62,7 +62,8 @@ start:
 	mov	[12],cx
 
 ! Get hd0 data
-
+! 获取硬盘0 的参数,16字节的结构体,指针为 BIOS 0x41中断号对应的中断函数 
+! 即 0x41中断 在中断表中保存的并非中断函数指针,而是信息块的指针
 	mov	ax,#0x0000
 	mov	ds,ax
 	lds	si,[4*0x41]
@@ -72,9 +73,7 @@ start:
 	mov	cx,#0x10
 	rep
 	movsb
-
-! Get hd1 data
-
+! Get hd1 data  BIOS 0x46 中断号所对应的中断函数指针
 	mov	ax,#0x0000
 	mov	ds,ax
 	lds	si,[4*0x46]
@@ -85,8 +84,7 @@ start:
 	rep
 	movsb
 
-! Check that there IS a hd1 :-)
-
+! Check that there IS a hd1 :-) 判断是否有 磁盘 hd1
 	mov	ax,#0x01500
 	mov	dl,#0x81
 	int	0x13
@@ -94,7 +92,7 @@ start:
 	cmp	ah,#3
 	je	is_disk1
 no_disk1:
-	mov	ax,#INITSEG
+	mov	ax,#INITSEG  ! 没有磁盘1,则将磁盘1的参数信息清空
 	mov	es,ax
 	mov	di,#0x0090
 	mov	cx,#0x10
@@ -104,11 +102,11 @@ no_disk1:
 is_disk1:
 
 ! now we want to move to protected mode ...
-
+! 现在开始转向保护模式
 	cli			! no interrupts allowed !
 
 ! first we move the system to it's rightful place
-
+! 首先将system模块移动到正确的位置,即 0x0 地址出
 	mov	ax,#0x0000
 	cld			! 'direction'=0, movs moves forward
 do_move:
@@ -125,7 +123,9 @@ do_move:
 	jmp	do_move
 
 ! then we load the segment descriptors
-
+! 将system移动到目标位置后,开始设置段描述符
+! idt表是空表,所以一旦进入保护模式是无法响应中断的,所以不能开启中断
+! gdt描述符有两个,一个代码段,一个数据段,地址范围都是0-8M,目前足够使用
 end_move:
 	mov	ax,#SETUPSEG	! right, forgot this at first. didn't work :-)
 	mov	ds,ax
@@ -133,7 +133,7 @@ end_move:
 	lgdt	gdt_48		! load gdt with whatever appropriate
 
 ! that was painless, now we enable A20
-
+! 开启 A20 地址线
 	call	empty_8042
 	mov	al,#0xD1		! command write
 	out	#0x64,al
@@ -149,7 +149,8 @@ end_move:
 ! rectify it afterwards. Thus the bios puts interrupts at 0x08-0x0f,
 ! which is used for the internal hardware interrupts as well. We just
 ! have to reprogram the 8259's, and it isn't fun.
-
+! 如果开启了 A20 地址线,现在要重新编码中断,设置中断芯片 8259A 主从两片
+! 最后将两片的所有中断都屏蔽掉
 	mov	al,#0x11		! initialization sequence
 	out	#0x20,al		! send it to 8259A-1
 	.word	0x00eb,0x00eb		! jmp $+2, jmp $+2
@@ -181,11 +182,15 @@ end_move:
 ! need no steenking BIOS anyway (except for the initial loading :-).
 ! The BIOS-routine wants lots of unnecessary data, and it's less
 ! "interesting" anyway. This is how REAL programmers do it.
-!
+! 到现在为止,移动了system模块,加载idt,gdt,开启A20地址线,重新设置了中断芯片
+! 之后不再依赖BIOS(只在加载模块时需要),BIOS函数调用需要很多额外的数据,一点也不好玩
+! 这些是实模式编程者需要做的.
 ! Well, now's the time to actually move into protected mode. To make
 ! things as simple as possible, we do no register set-up or anything,
 ! we let the gnu-compiled 32-bit programs do that. We just jump to
 ! absolute address 0x00000, in 32-bit protected mode.
+! 现在是时候进入保护模式了.为了尽量简单,并没有设置寄存器或其他的设置,让gnu编译的32位代码来完成.
+! 仅仅是开启保护模式,跳转到 0x00000 地址,进入32位保护模式.
 	mov	ax,#0x0001	! protected mode (PE) bit
 	lmsw	ax		! This is it!
 	jmpi	0,8		! jmp offset 0 of segment 8 (cs)
