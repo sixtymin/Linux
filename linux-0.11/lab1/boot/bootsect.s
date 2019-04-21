@@ -78,64 +78,23 @@ load_setup:
 
 ok_load_setup:
 
-! Get disk drive parameters, specifically nr of sectors/track
-
-	mov	dl,#0x00
-	mov	ax,#0x0800		! AH=8 is get drive parameters
-	int	0x13
-	mov	ch,#0x00
-	seg cs
-	mov	sectors,cx
-	mov	ax,#INITSEG
-	mov	es,ax
-
 ! Print some inane message
 
 	mov	ah,#0x03		! read cursor pos
 	xor	bh,bh
 	int	0x10
 	
-	mov	cx,#24
+	mov	cx,#25
 	mov	bx,#0x0007		! page 0, attribute 7 (normal)
 	mov	bp,#msg1
 	mov	ax,#0x1301		! write string, move cursor
 	int	0x10
 
-! ok, we've written the message, now
-! we want to load the system (at 0x10000)
-
-	mov	ax,#SYSSEG
-	mov	es,ax		! segment of 0x010000
-	call	read_it
 	call	kill_motor
-
-! After that we check which root-device to use. If the device is
-! defined (!= 0), nothing is done and the given device is used.
-! Otherwise, either /dev/PS0 (2,28) or /dev/at0 (2,8), depending
-! on the number of sectors that the BIOS reports currently.
-
-	seg cs
-	mov	ax,root_dev
-	cmp	ax,#0
-	jne	root_defined
-	seg cs
-	mov	bx,sectors
-	mov	ax,#0x0208		! /dev/ps0 - 1.2Mb
-	cmp	bx,#15
-	je	root_defined
-	mov	ax,#0x021c		! /dev/PS0 - 1.44Mb
-	cmp	bx,#18
-	je	root_defined
-undef_root:
-	jmp undef_root
-root_defined:
-	seg cs
-	mov	root_dev,ax
 
 ! after that (everyting loaded), we jump to
 ! the setup-routine loaded directly after
 ! the bootblock:
-
 	jmpi	0,SETUPSEG
 
 ! This routine loads the system at address 0x10000, making sure
@@ -147,83 +106,6 @@ root_defined:
 sread:	.word 1+SETUPLEN	! sectors read of current track
 head:	.word 0			! current head
 track:	.word 0			! current track
-
-read_it:
-	mov ax,es
-	test ax,#0x0fff
-die:	jne die			! es must be at 64kB boundary
-	xor bx,bx		! bx is starting address within segment
-rp_read:
-	mov ax,es
-	cmp ax,#ENDSEG		! have we loaded all yet?
-	jb ok1_read
-	ret
-ok1_read:
-	seg cs
-	mov ax,sectors
-	sub ax,sread
-	mov cx,ax
-	shl cx,#9
-	add cx,bx
-	jnc ok2_read
-	je ok2_read
-	xor ax,ax
-	sub ax,bx
-	shr ax,#9
-ok2_read:
-	call read_track
-	mov cx,ax
-	add ax,sread
-	seg cs
-	cmp ax,sectors
-	jne ok3_read
-	mov ax,#1
-	sub ax,head
-	jne ok4_read
-	inc track
-ok4_read:
-	mov head,ax
-	xor ax,ax
-ok3_read:
-	mov sread,ax
-	shl cx,#9
-	add bx,cx
-	jnc rp_read
-	mov ax,es
-	add ax,#0x1000
-	mov es,ax
-	xor bx,bx
-	jmp rp_read
-
-read_track:
-	push ax
-	push bx
-	push cx
-	push dx
-	mov dx,track
-	mov cx,sread
-	inc cx
-	mov ch,dl
-	mov dx,head
-	mov dh,dl
-	mov dl,#0
-	and dx,#0x0100
-	mov ah,#2
-	int 0x13
-	jc bad_rt
-	pop dx
-	pop cx
-	pop bx
-	pop ax
-	ret
-bad_rt:	mov ax,#0
-	mov dx,#0
-	int 0x13
-	pop dx
-	pop cx
-	pop bx
-	pop ax
-	jmp read_track
 
 !/*
 ! * This procedure turns off the floppy drive motor, so
@@ -243,8 +125,8 @@ sectors:
 
 msg1:
 	.byte 13,10
-	.ascii "Loading system ..."
-	.byte 13,10,13,10
+	.ascii "IdleOS is loading ..."
+	.byte 13,10
 
 .org 508
 root_dev:

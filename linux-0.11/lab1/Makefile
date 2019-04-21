@@ -36,6 +36,7 @@ all:	Image
 Image: boot/bootsect boot/setup tools/build
 	tools/build boot/bootsect boot/setup  > Image
 	sync
+	cp ./Image ../oslab/
 
 tools/build: tools/build.c
 	gcc $(CFLAGS) \

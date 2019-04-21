@@ -39,8 +39,8 @@ start:
 	xor	bh,bh
 	int	0x10		! save it in known place, con_init fetches
 	mov	[0],dx		! it from 0x90000.
-! Get memory size (extended mem, kB)
 
+! Get memory size (extended mem, kB)
 	mov	ah,#0x88
 	int	0x15
 	mov	[2],ax
@@ -62,7 +62,6 @@ start:
 	mov	[12],cx
 
 ! Get hd0 data
-
 	mov	ax,#0x0000
 	mov	ds,ax
 	lds	si,[4*0x41]
@@ -73,154 +72,115 @@ start:
 	rep
 	movsb
 
-! Get hd1 data
+	mov ax, #SETUPSEG
+	mov ds, ax
+	mov es, ax
 
-	mov	ax,#0x0000
-	mov	ds,ax
-	lds	si,[4*0x46]
-	mov	ax,#INITSEG
-	mov	es,ax
-	mov	di,#0x0090
-	mov	cx,#0x10
-	rep
-	movsb
+	mov cx,#22
+	mov bp,#msg_hello
+	call print_str
+	call print_ln 
+	call print_ln 
+	mov	ah,#0x03		! read cursor pos
+	xor	bh,bh
+	int	0x10
+	
+	mov cx,#14
+	mov bp,#mem
+	call print_str
+	push dx
+	mov bp, #2
+	call print_hex
+	pop dx
+	mov	ah,#0x03		! read cursor pos
+	xor	bh,bh
+	int	0x10
+	mov cx, #2
+	mov bp,#mem_unit
+	call print_str
+	call print_ln
+	mov	ah,#0x03		! read cursor pos
+	xor	bh,bh
+	int	0x10
 
-! Check that there IS a hd1 :-)
+	mov cx, #15
+	mov bp, #disk_head
+	call print_str
+	push dx
+	mov bp, #0x0082
+	call print_hex
+	pop dx
+	call print_ln
+	mov	ah,#0x03		! read cursor pos
+	xor	bh,bh
+	int	0x10
+	mov cx, #14
+	mov bp, #disk_cider
+	call print_str
+	push dx
+	mov bp, #0x0080
+	call print_hex
+	pop dx
+	call print_ln
+	mov	ah,#0x03		! read cursor pos
+	xor	bh,bh
+	int	0x10
+	mov cx, #23
+	mov bp, #disk_sect
+	call print_str
+	mov bp, #0x008E
+	call print_hex
+	
+	hlt
 
-	mov	ax,#0x01500
-	mov	dl,#0x81
-	int	0x13
-	jc	no_disk1
-	cmp	ah,#3
-	je	is_disk1
-no_disk1:
-	mov	ax,#INITSEG
-	mov	es,ax
-	mov	di,#0x0090
-	mov	cx,#0x10
-	mov	ax,#0x00
-	rep
-	stosb
-is_disk1:
-
-! now we want to move to protected mode ...
-
-	cli			! no interrupts allowed !
-
-! first we move the system to it's rightful place
-
-	mov	ax,#0x0000
-	cld			! 'direction'=0, movs moves forward
-do_move:
-	mov	es,ax		! destination segment
-	add	ax,#0x1000
-	cmp	ax,#0x9000
-	jz	end_move
-	mov	ds,ax		! source segment
-	sub	di,di
-	sub	si,si
-	mov 	cx,#0x8000
-	rep
-	movsw
-	jmp	do_move
-
-! then we load the segment descriptors
-
-end_move:
-	mov	ax,#SETUPSEG	! right, forgot this at first. didn't work :-)
-	mov	ds,ax
-	lidt	idt_48		! load idt with 0,0
-	lgdt	gdt_48		! load gdt with whatever appropriate
-
-! that was painless, now we enable A20
-
-	call	empty_8042
-	mov	al,#0xD1		! command write
-	out	#0x64,al
-	call	empty_8042
-	mov	al,#0xDF		! A20 on
-	out	#0x60,al
-	call	empty_8042
-
-! well, that went ok, I hope. Now we have to reprogram the interrupts :-(
-! we put them right after the intel-reserved hardware interrupts, at
-! int 0x20-0x2F. There they won't mess up anything. Sadly IBM really
-! messed this up with the original PC, and they haven't been able to
-! rectify it afterwards. Thus the bios puts interrupts at 0x08-0x0f,
-! which is used for the internal hardware interrupts as well. We just
-! have to reprogram the 8259's, and it isn't fun.
-
-	mov	al,#0x11		! initialization sequence
-	out	#0x20,al		! send it to 8259A-1
-	.word	0x00eb,0x00eb		! jmp $+2, jmp $+2
-	out	#0xA0,al		! and to 8259A-2
-	.word	0x00eb,0x00eb
-	mov	al,#0x20		! start of hardware int's (0x20)
-	out	#0x21,al
-	.word	0x00eb,0x00eb
-	mov	al,#0x28		! start of hardware int's 2 (0x28)
-	out	#0xA1,al
-	.word	0x00eb,0x00eb
-	mov	al,#0x04		! 8259-1 is master
-	out	#0x21,al
-	.word	0x00eb,0x00eb
-	mov	al,#0x02		! 8259-2 is slave
-	out	#0xA1,al
-	.word	0x00eb,0x00eb
-	mov	al,#0x01		! 8086 mode for both
-	out	#0x21,al
-	.word	0x00eb,0x00eb
-	out	#0xA1,al
-	.word	0x00eb,0x00eb
-	mov	al,#0xFF		! mask off all interrupts for now
-	out	#0x21,al
-	.word	0x00eb,0x00eb
-	out	#0xA1,al
-
-! well, that certainly wasn't fun :-(. Hopefully it works, and we don't
-! need no steenking BIOS anyway (except for the initial loading :-).
-! The BIOS-routine wants lots of unnecessary data, and it's less
-! "interesting" anyway. This is how REAL programmers do it.
-!
-! Well, now's the time to actually move into protected mode. To make
-! things as simple as possible, we do no register set-up or anything,
-! we let the gnu-compiled 32-bit programs do that. We just jump to
-! absolute address 0x00000, in 32-bit protected mode.
-	mov	ax,#0x0001	! protected mode (PE) bit
-	lmsw	ax		! This is it!
-	jmpi	0,8		! jmp offset 0 of segment 8 (cs)
-
-! This routine checks that the keyboard command queue is empty
-! No timeout is used - if this hangs there is something wrong with
-! the machine, and we probably couldn't proceed anyway.
-empty_8042:
-	.word	0x00eb,0x00eb
-	in	al,#0x64	! 8042 status port
-	test	al,#2		! is input buffer full?
-	jnz	empty_8042	! yes - loop
+! cx output char
+! bp straddr
+print_str:
+	mov	bx,#0x0007		! page 0, attribute 7 (normal)
+	mov	ax,#0x1301		! write string, move cursor
+	int	0x10
 	ret
 
-gdt:
-	.word	0,0,0,0		! dummy
-
-	.word	0x07FF		! 8Mb - limit=2047 (2048*4096=8Mb)
-	.word	0x0000		! base address=0
-	.word	0x9A00		! code read/exec
-	.word	0x00C0		! granularity=4096, 386
-
-	.word	0x07FF		! 8Mb - limit=2047 (2048*4096=8Mb)
-	.word	0x0000		! base address=0
-	.word	0x9200		! data read/write
-	.word	0x00C0		! granularity=4096, 386
-
-idt_48:
-	.word	0			! idt limit=0
-	.word	0,0			! idt base=0L
-
-gdt_48:
-	.word	0x800		! gdt limit=2048, 256 GDT entries
-	.word	512+gdt,0x9	! gdt base = 0X9xxxx
+! bp word to print
+print_hex:
+	mov bl, #0x07
+	mov cx, #4
+	mov dx, (bp)
+print_char:
+	rol dx, 4
+	mov ax, #0x0E0F
+	and al, dl
+	add al, #0x30
+	cmp al, #0x3A
+	jl out_char
+	add al, #0x7
+   out_char:
+   	int 0x10
+	loop print_char
+	ret
 	
+print_ln:
+	mov	ax,#0x0e0d
+	int	0x10
+	mov     al,#0xa
+	int	0x10
+	ret
+
+msg_hello:
+	.ascii "Now we are in Setup!!!"
+
+mem:
+	.ascii "Extern Mem: 0x"
+mem_unit:
+	.ascii "Kb"
+
+disk_head:
+	.ascii "disk header: 0x"
+disk_cider:
+	.ascii "disk cider: 0x"
+disk_sect:
+	.ascii "disk sect per cider: 0x"
+
 .text
 endtext:
 .data
