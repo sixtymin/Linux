@@ -2,6 +2,7 @@
 #include "linux/kernel.h"
 #include "string.h"
 #include "asm/segment.h"
+#include "errno.h"
 
 char g_ami[24] = {};
 
@@ -21,14 +22,14 @@ int sys_iam(const char *name)
 		return i;
 	}
 
-	return -1;
+	return -EINVAL;
 }
 
 int sys_whoami(char * name, unsigned int len)
 {
 	int amilen = strlen(g_ami);
 	if (len <= amilen)
-		return -1;
+		return -EINVAL;
 	else
 	{
 		int i = 0;
