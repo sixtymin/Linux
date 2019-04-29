@@ -11,6 +11,11 @@
 ! system to read them from there before the area is overwritten
 ! for buffer-blocks.
 !
+! setup 负责从BIOS中获取系统数据，将它们放到适当的内存位置
+! setup和system都已经被引导扇区加载到内存中了
+! 这段代码询问bios关于内存，磁盘和其他的一些系统参数，将它们放到安全位置
+! 0x90000-0x901FF，也即曾经引导扇区所在位置。在后面进入保护模式后会被系统
+! 读取，再之后会被缓存块所复写。
 
 ! NOTE! These had better be the same as in bootsect.s!
 #include <linux/config.h>
@@ -32,20 +37,17 @@ entry start
 start:
 
 ! ok, the read went well so we get current cursor position and save it for
-! posterity.
-
+! posterity. 
 	mov	ax,#INITSEG	! this is done in bootsect already, but...
 	mov	ds,ax
 
-! Get memory size (extended mem, kB)
-
+! Get memory size (extended mem, kB) 获取扩展内存，不包括低1M
 	mov	ah,#0x88
 	int	0x15
 	mov	[2],ax
 
 ! check for EGA/VGA and some config parameters
-
-	mov	ah,#0x12
+	mov	ah,#0x12    ! 检查是EGA/VGA，以及获取参数
 	mov	bl,#0x10
 	int	0x10
 	mov	[8],ax
@@ -56,21 +58,19 @@ start:
 	je	novga
 	call	chsvga
 novga:	mov	[14],ax
-	mov	ah,#0x03	! read cursor pos
+	mov	ah,#0x03	! read cursor pos 读取屏幕光标位置
 	xor	bh,bh
 	int	0x10		! save it in known place, con_init fetches
 	mov	[0],dx		! it from 0x90000.
 	
 ! Get video-card data:
-	
 	mov	ah,#0x0f
 	int	0x10
-	mov	[4],bx		! bh = display page
+	mov	[4],bx		! bh = display page 获取视频卡参数 当前显示页 和视频模式
 	mov	[6],ax		! al = video mode, ah = window width
 
-! Get hd0 data
-
-	mov	ax,#0x0000
+! Get hd0 data      ! 获取磁盘参数，磁盘0和磁盘1，如果磁盘1不存在
+	mov	ax,#0x0000  ! 则将获取的磁盘1的参数清空掉
 	mov	ds,ax
 	lds	si,[4*0x41]
 	mov	ax,#INITSEG
@@ -81,7 +81,6 @@ novga:	mov	[14],ax
 	movsb
 
 ! Get hd1 data
-
 	mov	ax,#0x0000
 	mov	ds,ax
 	lds	si,[4*0x46]
@@ -93,7 +92,6 @@ novga:	mov	[14],ax
 	movsb
 
 ! Check that there IS a hd1 :-)
-
 	mov	ax,#0x01500
 	mov	dl,#0x81
 	int	0x13
@@ -109,13 +107,12 @@ no_disk1:
 	rep
 	stosb
 is_disk1:
-
+! 关闭中断，开启保护模式
 ! now we want to move to protected mode ...
-
 	cli			! no interrupts allowed !
 
 ! first we move the system to it's rightful place
-
+! 首先将system模块移动到正确的位置，即0地址开始处
 	mov	ax,#0x0000
 	cld			! 'direction'=0, movs moves forward
 do_move:
@@ -126,13 +123,13 @@ do_move:
 	mov	ds,ax		! source segment
 	sub	di,di
 	sub	si,si
-	mov 	cx,#0x8000
+	mov cx,#0x8000
 	rep
 	movsw
 	jmp	do_move
 
 ! then we load the segment descriptors
-
+! 移动完 system，则加载 idt（空表）GDT表，开启A20地址线
 end_move:
 	mov	ax,#SETUPSEG	! right, forgot this at first. didn't work :-)
 	mov	ds,ax
@@ -156,7 +153,8 @@ end_move:
 ! rectify it afterwards. Thus the bios puts interrupts at 0x08-0x0f,
 ! which is used for the internal hardware interrupts as well. We just
 ! have to reprogram the 8259's, and it isn't fun.
-
+! 从这里开始，要重新变成中断，将这些中断放到intel保留中断之后
+! 即将8259A的16个中断重新映射为 int 0x20-0x2F。
 	mov	al,#0x11		! initialization sequence
 	out	#0x20,al		! send it to 8259A-1
 	.word	0x00eb,0x00eb		! jmp $+2, jmp $+2
@@ -181,19 +179,19 @@ end_move:
 	.word	0x00eb,0x00eb
 	mov	al,#0xFF		! mask off all interrupts for now
 	out	#0x21,al
-	.word	0x00eb,0x00eb
+	.word	0x00eb,0x00eb ! 最后要将所有硬件中断屏蔽掉，还无法处理
 	out	#0xA1,al
 
 ! well, that certainly wasn't fun :-(. Hopefully it works, and we don't
 ! need no steenking BIOS anyway (except for the initial loading :-).
 ! The BIOS-routine wants lots of unnecessary data, and it's less
 ! "interesting" anyway. This is how REAL programmers do it.
-!
+! 在除了初始化加载和获取硬件参数中使用BIOS之外，后面不再使用它。
 ! Well, now's the time to actually move into protected mode. To make
 ! things as simple as possible, we do no register set-up or anything,
 ! we let the gnu-compiled 32-bit programs do that. We just jump to
 ! absolute address 0x00000, in 32-bit protected mode.
-
+! 现在开启保护模式，这里并不做其他设置，由保护模式的32位程序来完成
 	mov	ax,#0x0001	! protected mode (PE) bit
 	lmsw	ax		! This is it!
 	jmpi	0,8		! jmp offset 0 of segment 8 (cs)
@@ -211,7 +209,7 @@ empty_8042:
 ! Routine trying to recognize type of SVGA-board present (if any)
 ! and if it recognize one gives the choices of resolution it offers.
 ! If one is found the resolution chosen is given by al,ah (rows,cols).
-
+! 如果存在VGA显示器，则尝试获取VGA的类型，并获取它的行宽大小，ax中返回
 chsvga:	cld
 	push	ds
 	push	cs

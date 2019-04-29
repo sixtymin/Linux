@@ -10,26 +10,28 @@
  * NOTE!!! Startup happens at absolute address 0x00000000, which is also where
  * the page directory will exist. The startup code will be overwritten by
  * the page directory.
+ * head.sÖĞÊÇ32Î»µÄÆô¶¯´úÂë£¬ËüÎ»ÓÚ¾ø¶ÔµØÖ·0x00000000£¬ÕâÀïÒ²ÊÇºóÃæÒ³Ä¿Â¼
+ * ±£´æµÄÎ»ÖÃ
  */
 .text
 .globl idt,gdt,pg_dir,tmp_floppy_area,startup_32
 pg_dir:
 startup_32:
-	movl $0x10,%eax
+	movl $0x10,%eax    # 00000000 00010/000 ¼´GDT±íµÚ¶şÏî
 	mov %ax,%ds
 	mov %ax,%es
 	mov %ax,%fs
 	mov %ax,%gs
 	lss stack_start,%esp
-	call setup_idt
-	call setup_gdt
-	movl $0x10,%eax		# reload all the segment registers
+	call setup_idt     # ÖØĞÂÖÃIDT±í
+	call setup_gdt     # ÖØĞÂÉèÖÃGDT±í
+	movl $0x10,%eax	   # ÖØÔØËùÓĞµÄ¶Î¼Ä´æÆ÷
 	mov %ax,%ds		# after changing gdt. CS was already
 	mov %ax,%es		# reloaded in 'setup_gdt'
 	mov %ax,%fs
 	mov %ax,%gs
-	lss stack_start,%esp
-	xorl %eax,%eax
+	lss stack_start,%esp # ÖØÖÃÕ»£¬Ô­À´Î»ÓÚ 0x9FF00 - 0xC µÄÎ»ÖÃ
+	xorl %eax,%eax° # ÕâÀïÍ¨¹ıÔÚ0µØÖ·ÉèÖÃÖµ£¬ÅĞ¶Ï0x100000ÊÇ·ñÏàÍ¬À´È·¶¨A20ÊÇ·ñ¿ªÆô
 1:	incl %eax		# check that A20 really IS enabled
 	movl %eax,0x000000	# loop forever if it isn't
 	cmpl %eax,0x100000
@@ -193,6 +195,9 @@ ignore_int:
  * I've tried to show which constants to change by having
  * some kind of marker at them (search for "16Mb"), but I
  * won't guarantee that's all :-( )
+ *
+ * Õâ¸öº¯ÊıÍ¨¹ıÉèÖÃCR0ÖĞµÄ·ÖÒ³Î»À´¿ªÆô·ÖÒ³¡£Ò³±íÓ³ÉäÁË16MÄÚ´æ
+ * Ò³Ãæ¼ÙÉèÃ»ÓĞ·Ç·¨µØÖ·³öÏÖ
  */
 .align 2
 setup_paging:

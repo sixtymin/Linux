@@ -3,6 +3,8 @@
 ! 0x3000 is 0x30000 bytes = 196kB, more than enough for current
 ! versions of linux
 !
+! SYS_SIZE是要加载的内核的大小，单位是16字节，即0x3000=0x30000bytes 196KB
+!
 #include <linux/config.h>
 SYSSIZE = DEF_SYSSIZE
 !
@@ -23,6 +25,17 @@ SYSSIZE = DEF_SYSSIZE
 ! The loader has been made as simple as possible, and continuos
 ! read errors will result in a unbreakable loop. Reboot by hand. It
 ! loads pretty fast by getting whole sectors at a time whenever possible.
+!
+! bootsect.s 是由bios的启动例程加载到0x7c00地址处，然后将自己移动到
+! 0x90000地址处并跳转过去继续执行
+!
+! 然后将 setup 直接加载到其后的内存中，即0x90200开始的内存，将system模块
+! 加载到0x10000地址处，它们都是用BIOS中断完成
+! 注意：当前的system有最长限制，即0x8000KB，这在当前和可见的未来都应该
+! 没什么问题，512KB的内核大小应该足够
+!
+! 加载器已经做的尽可能简单了，持续的读取错误将会进入无限循环中，这时需要手动
+! 重启。
 
 .globl begtext, begdata, begbss, endtext, enddata, endbss
 .text
@@ -33,12 +46,12 @@ begdata:
 begbss:
 .text
 
-SETUPLEN = 4				! nr of setup-sectors
-BOOTSEG  = 0x07c0			! original address of boot-sector
-INITSEG  = DEF_INITSEG			! we move boot here - out of the way
-SETUPSEG = DEF_SETUPSEG			! setup starts here
-SYSSEG   = DEF_SYSSEG			! system loaded at 0x10000 (65536).
-ENDSEG   = SYSSEG + SYSSIZE		! where to stop loading
+SETUPLEN = 4			! nr of setup-sectors setup的长度
+BOOTSEG  = 0x07c0		! original address of boot-sector 引导扇区加载的段地址
+INITSEG  = DEF_INITSEG	! we move boot here - out of the way 引导扇区移动到这个段 0x9000
+SETUPSEG = DEF_SETUPSEG	! setup starts here setup模块从这个段开始 0x9020
+SYSSEG   = DEF_SYSSEG	! system loaded at 0x10000 (65536).
+ENDSEG   = SYSSEG + SYSSIZE	! where to stop loading 停止加载的地方
 
 ! ROOT_DEV & SWAP_DEV are now written by "build".
 ROOT_DEV = 0
@@ -46,9 +59,9 @@ SWAP_DEV = 0
 
 entry start
 start:
-	mov	ax,#BOOTSEG
+	mov	ax,#BOOTSEG  !0x07c0
 	mov	ds,ax
-	mov	ax,#INITSEG
+	mov	ax,#INITSEG  !0x9000
 	mov	es,ax
 	mov	cx,#256
 	sub	si,si
@@ -81,10 +94,12 @@ go:	mov	ax,cs
  *
  *	Segments are as follows: ds=es=ss=cs - INITSEG,
  *		fs = 0, gs = parameter table segment
+ *  许多BIOS默认的磁盘参数表不识别超过默认磁盘参数表中指定的多扇区读取
+ *  在有些情况下这个默认值可能是7
+ *  由于单扇区读取慢且容易出问题，因此这里创建新的参数表（第一块磁盘）
+ *  将最大扇区数设置为 18，在HD 1.44上遇到最多的情况。
  */
-
-
-	push	#0
+	push #0
 	pop	fs
 	mov	bx,#0x78		! fs:bx is parameter table address
 	seg fs
@@ -99,31 +114,31 @@ go:	mov	ax,cs
 	movw
 
 	mov	di,dx
-	movb	4(di),*18		! patch sector count
+	movb 4(di),*18		! patch sector count
 
 	seg fs
 	mov	(bx),di
 	seg fs
 	mov	2(bx),es
 
-	mov     ax,cs ;pop	ax
+	mov ax,cs ;pop	ax
 	mov	fs,ax
 	mov	gs,ax
 	
 	xor	ah,ah			! reset FDC 
 	xor	dl,dl
-	int 	0x13	
+	int 0x13	
 
 ! load the setup-sectors directly after the bootblock.
 ! Note that 'es' is already set up.
-
+! 加载 setup 的四个扇区到引导块之后
 load_setup:
 	xor	dx, dx			! drive 0, head 0
 	mov	cx,#0x0002		! sector 2, track 0
 	mov	bx,#0x0200		! address = 512, in INITSEG
 	mov	ax,#0x0200+SETUPLEN	! service 2, nr of sectors
-	int	0x13			! read it
-	jnc	ok_load_setup		! ok - continue
+	int	0x13			! int0x13-0x2 BIOS中断服务
+	jnc	ok_load_setup	! ok - continue
 
 	push	ax			! dump error code
 	call	print_nl
@@ -139,18 +154,16 @@ load_setup:
 ok_load_setup:
 
 ! Get disk drive parameters, specifically nr of sectors/track
-
 	xor	dl,dl
 	mov	ah,#0x08		! AH=8 is get drive parameters
 	int	0x13
 	xor	ch,ch
 	seg cs
-	mov	sectors,cx
+	mov	sectors,cx      ! 获取每个磁道的扇区数
 	mov	ax,#INITSEG
 	mov	es,ax
 
 ! Print some inane message
-
 	mov	ah,#0x03		! read cursor pos
 	xor	bh,bh
 	int	0x10
@@ -163,7 +176,7 @@ ok_load_setup:
 
 ! ok, we've written the message, now
 ! we want to load the system (at 0x10000)
-
+! 现在开始加载 system 模块
 	mov	ax,#SYSSEG
 	mov	es,ax		! segment of 0x010000
 	call	read_it
@@ -191,7 +204,7 @@ undef_root:
 	jmp undef_root
 root_defined:
 	seg cs
-	mov	root_dev,ax
+	mov	root_dev,ax     ! 根据扇区判断是否定义根文件系统设备号
 
 ! after that (everyting loaded), we jump to
 ! the setup-routine loaded directly after
