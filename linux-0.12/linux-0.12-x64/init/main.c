@@ -128,16 +128,17 @@ void main(void)		/* This really IS void, no error here. */
 {			/* The startup routine assumes (well, ...) this */
 /*
  * Interrupts are still disabled. Do necessary setups, then
- * enable them
+ * enable them IDT已经设置默认处理函数，但是中断仍然关闭
+ * 等到有了必要的设置，再一一开启。
  */
- 	ROOT_DEV = ORIG_ROOT_DEV;
+ 	ROOT_DEV = ORIG_ROOT_DEV; //ORIG_ROOT_DEV (*(unsigned short *)0x901FC)
  	SWAP_DEV = ORIG_SWAP_DEV;
 	sprintf(term, "TERM=con%dx%d", CON_COLS, CON_ROWS);
 	envp[1] = term;	
 	envp_rc[1] = term;
- 	drive_info = DRIVE_INFO;
+ 	drive_info = DRIVE_INFO; // 硬盘参数表
 	memory_end = (1<<20) + (EXT_MEM_K<<10);
-	memory_end &= 0xfffff000;
+	memory_end &= 0xfffff000;  // 根据内存大小设置 缓存 大小
 	if (memory_end > 16*1024*1024)
 		memory_end = 16*1024*1024;
 	if (memory_end > 12*1024*1024) 
