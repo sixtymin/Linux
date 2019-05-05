@@ -15,21 +15,21 @@
 .globl idt,gdt,pg_dir,tmp_floppy_area,startup_32
 pg_dir:
 startup_32:
-	movl $0x10,%eax 
+	movl $0x10,%eax  
 	mov %ax,%ds
 	mov %ax,%es
 	mov %ax,%fs
 	mov %ax,%gs
 	lss stack_start,%esp
-	call setup_idt 
-	call setup_gdt
+	call setup_idt  
+	call setup_gdt 
 	movl $0x10,%eax	
 	mov %ax,%ds		# after changing gdt. CS was already
 	mov %ax,%es		# reloaded in 'setup_gdt'
 	mov %ax,%fs
 	mov %ax,%gs
-	lss stack_start,%esp
-	xorl %eax,%eax
+	lss stack_start,%esp 
+	xorl %eax,%eax 
 1:	incl %eax		# check that A20 really IS enabled
 	movl %eax,0x000000	# loop forever if it isn't
 	cmpl %eax,0x100000
