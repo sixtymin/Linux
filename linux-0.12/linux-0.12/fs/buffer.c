@@ -160,7 +160,8 @@ static inline void insert_into_queues(struct buffer_head * bh)
 		return;
 	bh->b_next = hash(bh->b_dev,bh->b_blocknr);
 	hash(bh->b_dev,bh->b_blocknr) = bh;
-	bh->b_next->b_prev = bh;
+    if(bh->b_next)
+	    bh->b_next->b_prev = bh;
 }
 
 static struct buffer_head * find_buffer(int dev, int block)
@@ -282,10 +283,14 @@ struct buffer_head * bread(int dev,int block)
 
 #define COPYBLK(from,to) \
 __asm__("cld\n\t" \
-	"rep\n\t" \
-	"movsl\n\t" \
+		"pushl %%edi\n\t" \
+		"pushl %%esi\n\t" \
+		"rep\n\t" \
+		"movsl\n\t" \
+		"popl %%esi\n\t" \
+		"popl %%edi\n\t" \
 	::"c" (BLOCK_SIZE/4),"S" (from),"D" (to) \
-	)
+	:)
 
 /*
  * bread_page reads four buffers into memory at the desired address. It's
