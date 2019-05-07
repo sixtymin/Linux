@@ -46,8 +46,8 @@
 #define DEFAULT_MAJOR_ROOT 0x03 
 #define DEFAULT_MINOR_ROOT 0x01
 
-#define DEFAULT_MAJOR_SWAP 0
-#define DEFAULT_MINOR_SWAP 0
+#define DEFAULT_MAJOR_SWAP 0x03
+#define DEFAULT_MINOR_SWAP 0x04
 
 /* max nr of sectors of setup: don't change unless you also change
  * bootsect etc */
