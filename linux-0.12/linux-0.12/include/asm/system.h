@@ -48,7 +48,7 @@ __asm__ ("movw %%dx,%%ax\n\t" \
 		((type)<<8); \
 	*((gate_addr)+1) = (((base) & 0x0000ffff)<<16) | \
 		((limit) & 0x0ffff); }
-
+/*
 #define _set_tssldt_desc(n,addr,type) \
 __asm__ ("movw $104,%1\n\t" \
 	"movw %%ax,%2\n\t" \
@@ -60,7 +60,26 @@ __asm__ ("movw $104,%1\n\t" \
 	"rorl $16,%%eax" \
 	::"a" (addr), "m" (*(n)), "m" (*(n+2)), "m" (*(n+4)), \
 	 "m" (*(n+5)), "m" (*(n+6)), "m" (*(n+7)) \
+	 )
+*/
+#define _set_tssldt_desc(n,addr,type) \
+__asm__ ("push %%ecx\n\t" \
+	"movw %%ax,%%cx\n\t" \
+	"rorl $16, %%ecx\n\t" \
+	"movw $104,%%cx\n\t" \
+	"movl %%ecx, %1\n\t" \
+	"rorl $16,%%eax\n\t" \
+	"xor %%ecx, %%ecx\n\t" \
+	"movb %%ah, %%ch\n\t" \
+	"shll $16, %%ecx\n\t" \
+	"movb %%al, %%cl\n\t" \
+	"movb $" type ", %%ch\n\t" \
+	"movl %%ecx, %2\n\t" \
+	"rorl $16,%%eax\n\t" \
+	"pop %%ecx" \
+	::"a" (addr), "m" (*(n)), "m" (*(n+4)) \
 	)
+
 
 #define set_tss_desc(n,addr) _set_tssldt_desc(((char *) (n)),addr,"0x89")
 #define set_ldt_desc(n,addr) _set_tssldt_desc(((char *) (n)),addr,"0x82")

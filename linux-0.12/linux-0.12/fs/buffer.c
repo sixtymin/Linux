@@ -290,7 +290,7 @@ __asm__("cld\n\t" \
 		"popl %%esi\n\t" \
 		"popl %%edi\n\t" \
 	::"c" (BLOCK_SIZE/4),"S" (from),"D" (to) \
-	:)
+	)
 
 /*
  * bread_page reads four buffers into memory at the desired address. It's

@@ -127,8 +127,8 @@ int copy_process(int nr,long ebp,long edi,long esi,long gs,long none,
 		current->executable->i_count++;
 	if (current->library)
 		current->library->i_count++;
-	set_tss_desc(gdt+(nr<<1)+FIRST_TSS_ENTRY,&(p->tss));
-	set_ldt_desc(gdt+(nr<<1)+FIRST_LDT_ENTRY,&(p->ldt));
+	set_tss_desc((gdt+(nr<<1)+FIRST_TSS_ENTRY),&(p->tss));
+	set_ldt_desc((gdt+(nr<<1)+FIRST_LDT_ENTRY),&(p->ldt));
 	p->p_pptr = current;
 	p->p_cptr = 0;
 	p->p_ysptr = 0;
