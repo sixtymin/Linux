@@ -13,7 +13,7 @@
 !
 ! setup 负责从BIOS中获取系统数据，将它们放到适当的内存位置
 ! setup和system都已经被引导扇区加载到内存中了
-! 这段代码询问bios关于内存，磁盘和其他的一些系统参数，将它们放到安全位置
+! 这段代码查询bios中关于内存，磁盘和其他的一些系统参数，将它们放到安全位置
 ! 0x90000-0x901FF，也即曾经引导扇区所在位置。在后面进入保护模式后会被系统
 ! 读取，再之后会被缓存块所复写。
 
@@ -153,7 +153,7 @@ end_move:
 ! rectify it afterwards. Thus the bios puts interrupts at 0x08-0x0f,
 ! which is used for the internal hardware interrupts as well. We just
 ! have to reprogram the 8259's, and it isn't fun.
-! 从这里开始，要重新变成中断，将这些中断放到intel保留中断之后
+! 从这里开始，要重新设置中断芯片，将这些中断放到intel保留中断之后
 ! 即将8259A的16个中断重新映射为 int 0x20-0x2F。
 	mov	al,#0x11		! initialization sequence
 	out	#0x20,al		! send it to 8259A-1

@@ -446,14 +446,14 @@ void do_no_page(unsigned long error_code,unsigned long address)
 void mem_init(long start_mem, long end_mem)
 {
 	int i;
-
+	// 这里的 start_mem 已经是预留出块设备使用缓存后的值
 	HIGH_MEMORY = end_mem;
 	for (i=0 ; i<PAGING_PAGES ; i++)
 		mem_map[i] = USED;
-	i = MAP_NR(start_mem);
+	i = MAP_NR(start_mem); // 越过预留的块设备缓存
 	end_mem -= start_mem;
 	end_mem >>= 12;
-	while (end_mem-->0)
+	while (end_mem-->0) // 将用于主存的页设为未使用
 		mem_map[i++]=0;
 }
 

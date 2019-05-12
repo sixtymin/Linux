@@ -134,8 +134,7 @@ void schedule(void)
 				(*p)->signal |= (1<<(SIGALRM-1));
 				(*p)->alarm = 0;
 			}
-			if (((*p)->signal & ~(_BLOCKABLE & (*p)->blocked)) &&
-			(*p)->state==TASK_INTERRUPTIBLE)
+			if (((*p)->signal & ~(_BLOCKABLE & (*p)->blocked)) && (*p)->state==TASK_INTERRUPTIBLE)
 				(*p)->state=TASK_RUNNING;
 		}
 
@@ -146,7 +145,7 @@ void schedule(void)
 		next = 0;
 		i = NR_TASKS;
 		p = &task[NR_TASKS];
-		while (--i) {
+		while (--i) { // Task 0 状态不会进行检查
 			if (!*--p)
 				continue;
 			if ((*p)->state == TASK_RUNNING && (*p)->counter > c)
@@ -155,8 +154,9 @@ void schedule(void)
 		if (c) break;
 		for(p = &LAST_TASK ; p > &FIRST_TASK ; --p)
 			if (*p)
-				(*p)->counter = ((*p)->counter >> 1) +
-						(*p)->priority;
+			{
+				(*p)->counter = ((*p)->counter >> 1) + (*p)->priority;
+			}
 	}
 	switch_to(next);
 }
@@ -421,24 +421,25 @@ void sched_init(void)
 
 	if (sizeof(struct sigaction) != 16)
 		panic("Struct sigaction MUST be 16 bytes");
+	// 设置GDT表中任务0的 TSS和LDT条目
 	set_tss_desc(gdt+FIRST_TSS_ENTRY,&(init_task.task.tss));
 	set_ldt_desc(gdt+FIRST_LDT_ENTRY,&(init_task.task.ldt));
 	p = gdt+2+FIRST_TSS_ENTRY;
-	for(i=1;i<NR_TASKS;i++) {
+	for(i=1;i<NR_TASKS;i++) { // 将GDT表中余下63个任务的TSS/LDT项都置空
 		task[i] = NULL;
 		p->a=p->b=0;
 		p++;
 		p->a=p->b=0;
 		p++;
 	}
-/* Clear NT, so that we won't have troubles with that later on */
+	/* Clear NT, so that we won't have troubles with that later on */
 	__asm__("pushfl ; andl $0xffffbfff,(%esp) ; popfl");
-	ltr(0);
+	ltr(0);  // 宏定义，不太容易理解，用例子计算就容易理解了
 	lldt(0);
 	outb_p(0x36,0x43);		/* binary, mode 3, LSB/MSB, ch 0 */
 	outb_p(LATCH & 0xff , 0x40);	/* LSB */
-	outb(LATCH >> 8 , 0x40);	/* MSB */
-	set_intr_gate(0x20,&timer_interrupt);
-	outb(inb_p(0x21)&~0x01,0x21);
-	set_system_gate(0x80,&system_call);
+	outb(LATCH >> 8 , 0x40);	/* MSB */ // 编程 8253芯片，通道0用于系统时间片定时器
+	set_intr_gate(0x20,&timer_interrupt); // 设置定时器中断响应函数
+	outb(inb_p(0x21)&~0x01,0x21);         // 开启 8259A 上的定时器中断屏蔽位
+	set_system_gate(0x80,&system_call);   // 设置系统调用中断
 }

@@ -20,7 +20,7 @@ startup_32:
 	mov %ax,%es
 	mov %ax,%fs
 	mov %ax,%gs
-	lss stack_start,%esp
+	lss stack_start,%esp 
 	call setup_idt  
 	call setup_gdt 
 	movl $0x10,%eax	
@@ -28,11 +28,11 @@ startup_32:
 	mov %ax,%es		# reloaded in 'setup_gdt'
 	mov %ax,%fs
 	mov %ax,%gs
-	lss stack_start,%esp 
+	lss stack_start,%esp # 注意这里的栈是在C代码中定义，即 user_stack 变量
 	xorl %eax,%eax 
 1:	incl %eax		# check that A20 really IS enabled
 	movl %eax,0x000000	# loop forever if it isn't
-	cmpl %eax,0x100000
+	cmpl %eax,0x100000  # 检查 A20地址线是否开启，未开启则进入死循环检测
 	je 1b
 /*
  * NOTE! 486 should set bit 16, to check for write-protect in supervisor
@@ -137,7 +137,7 @@ after_page_tables:
 	pushl $0
 	pushl $0
 	pushl $L6		# return address for main, if it decides to.
-	pushl $main
+	pushl $main     # 正常不会从main返回，但是一旦返回则进入 L6 标号的死循环
 	jmp setup_paging
 L6:
 	jmp L6			# main should never return here, but
@@ -194,8 +194,8 @@ ignore_int:
  * some kind of marker at them (search for "16Mb"), but I
  * won't guarantee that's all :-( )
  *
- * �������ͨ������CR0�еķ�ҳλ��������ҳ��ҳ��ӳ����16M�ڴ�
- * ҳ�����û�зǷ���ַ����
+ * Õâ¸öº¯ÊýÍ¨¹ýÉèÖÃCR0ÖÐµÄ·ÖÒ³Î»À´¿ªÆô·ÖÒ³¡£Ò³±íÓ³ÉäÁË16MÄÚ´æ
+ * Ò³Ãæ¼ÙÉèÃ»ÓÐ·Ç·¨µØÖ·³öÏÖ
  */
 .align 2
 setup_paging:

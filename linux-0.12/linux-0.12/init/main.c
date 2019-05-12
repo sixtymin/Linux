@@ -128,7 +128,8 @@ void main(void)		/* This really IS void, no error here. */
 {			/* The startup routine assumes (well, ...) this */
 /*
  * Interrupts are still disabled. Do necessary setups, then
- * enable them IDT已经设置默认处理函数，但是中断仍然关闭
+ * enable them 
+ * IDT已经设置默认处理函数，但是中断仍然关闭
  * 等到有了必要的设置，再一一开启。
  */
  	ROOT_DEV = ORIG_ROOT_DEV; //ORIG_ROOT_DEV (*(unsigned short *)0x901FC)
@@ -152,20 +153,22 @@ void main(void)		/* This really IS void, no error here. */
 	main_memory_start += rd_init(main_memory_start, RAMDISK*1024);
 #endif
 	mem_init(main_memory_start,memory_end);
-	trap_init();
-	blk_dev_init();
-	chr_dev_init();
-	tty_init();
-	time_init();
-	sched_init();
+	trap_init();    // 中断初始化
+	blk_dev_init(); // 块设备初始化
+	chr_dev_init(); // 字符设备初始化（实际为空）
+	tty_init();     // tty设备（串口以及控制台）初始化
+	time_init();    // 读取CMOS中的时间值，换算为Linux内使用值
+	sched_init();   // 初始化任务0,用于后面切换到R3做准备
 	buffer_init(buffer_memory_end);
-	hd_init();
-	floppy_init();
+	hd_init();      // 硬盘初始化
+	floppy_init();  // 软盘初始化，设置
 	sti();
-	move_to_user_mode();
+	move_to_user_mode(); // 切换到R3，任务0的TSS/LDT/PCB等都是代码写死的,即INIT_TASK宏
 	if (!fork()) {		/* we count on this going ok */
 		init();
 	}
+	// 任务0在创建任务1之后，则退化为 idle进程，反复调用pause
+	// pause 中会
 /*
  *   NOTE!!   For any other task 'pause()' would mean we have to get a
  * signal to awaken, but task0 is the sole exception (see 'schedule()')

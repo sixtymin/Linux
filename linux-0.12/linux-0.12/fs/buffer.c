@@ -338,7 +338,7 @@ struct buffer_head * breada(int dev,int first, ...)
 		tmp=getblk(dev,first);
 		if (tmp) {
 			if (!tmp->b_uptodate)
-				ll_rw_block(READA, tmp); // bug �޸���bhӦ��Ϊ tmp
+				ll_rw_block(READA, tmp); // bug ÐÞ¸´£¬bhÓ¦¸ÃÎª tmp
 			tmp->b_count--;
 		}
 	}
@@ -355,7 +355,8 @@ void buffer_init(long buffer_end)
 	struct buffer_head * h = start_buffer;
 	void * b;
 	int i;
-
+	// 将预留给块设备的缓存，按照1K大小进行划分
+	// 然后将每块前部定义为 buffer_head 结构形式，用于放到freelist链表中
 	if (buffer_end == 1<<20)
 		b = (void *) (640*1024);
 	else

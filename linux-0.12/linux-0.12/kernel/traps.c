@@ -207,7 +207,7 @@ void trap_init(void)
 	for (i=18;i<48;i++)
 		set_trap_gate(i,&reserved);
 	set_trap_gate(45,&irq13);
-	outb_p(inb_p(0x21)&0xfb,0x21);
+	outb_p(inb_p(0x21)&0xfb,0x21); // 开启两片8259A连接线的屏蔽
 	outb(inb_p(0xA1)&0xdf,0xA1);
 	set_trap_gate(39,&parallel_interrupt);
 }

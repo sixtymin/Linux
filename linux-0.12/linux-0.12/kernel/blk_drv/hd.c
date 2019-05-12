@@ -378,7 +378,7 @@ void do_hd_request(void)
 void hd_init(void)
 {
 	blk_dev[MAJOR_NR].request_fn = DEVICE_REQUEST;
-	set_intr_gate(0x2E,&hd_interrupt);
+	set_intr_gate(0x2E,&hd_interrupt); // 硬盘中断处理设置，并开启磁盘中断
 	outb_p(inb_p(0x21)&0xfb,0x21);
 	outb(inb_p(0xA1)&0xbf,0xA1);
 }

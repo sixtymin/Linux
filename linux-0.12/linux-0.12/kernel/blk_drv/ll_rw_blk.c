@@ -210,7 +210,7 @@ void ll_rw_block(int rw, struct buffer_head * bh)
 void blk_dev_init(void)
 {
 	int i;
-
+	// 将保存块设备读写请求信息的全局变量清空
 	for (i=0 ; i<NR_REQUEST ; i++) {
 		request[i].dev = -1;
 		request[i].next = NULL;
