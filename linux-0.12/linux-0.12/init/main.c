@@ -137,9 +137,9 @@ void main(void)		/* This really IS void, no error here. */
 	sprintf(term, "TERM=con%dx%d", CON_COLS, CON_ROWS);
 	envp[1] = term;	
 	envp_rc[1] = term;
- 	drive_info = DRIVE_INFO; // 硬盘参数表
+ 	drive_info = DRIVE_INFO;	// 硬盘参数表
 	memory_end = (1<<20) + (EXT_MEM_K<<10);
-	memory_end &= 0xfffff000;  // 根据内存大小设置 缓存 大小
+	memory_end &= 0xfffff000;	// 根据内存大小设置 缓存 大小
 	if (memory_end > 16*1024*1024)
 		memory_end = 16*1024*1024;
 	if (memory_end > 12*1024*1024) 
@@ -167,8 +167,8 @@ void main(void)		/* This really IS void, no error here. */
 	if (!fork()) {		/* we count on this going ok */
 		init();
 	}
-	// 任务0在创建任务1之后，则退化为 idle进程，反复调用pause
-	// pause 中会
+	// 任务0在创建任务1之后，则退化为 idle 进程，反复调用pause
+	// pause 中会将当前进程设置为中断可唤醒，然后调用schedule进行进程调度
 /*
  *   NOTE!!   For any other task 'pause()' would mean we have to get a
  * signal to awaken, but task0 is the sole exception (see 'schedule()')
@@ -195,14 +195,14 @@ void init(void)
 {
 	int pid,i;
 
-	setup((void *) &drive_info);
+	setup((void *) &drive_info); // 挂载根文件系统
 	(void) open("/dev/tty1",O_RDWR,0);
 	(void) dup(0);
 	(void) dup(0);
 	printf("%d buffers = %d bytes buffer space\n\r",NR_BUFFERS,
 		NR_BUFFERS*BLOCK_SIZE);
 	printf("Free mem: %d bytes\n\r",memory_end-main_memory_start);
-	if (!(pid=fork())) {
+	if (!(pid=fork())) { // 创建2号进程，执行/etc/rc中命令，然后退出
 		close(0);
 		if (open("/etc/rc",O_RDONLY,0))
 			_exit(1);
@@ -210,9 +210,9 @@ void init(void)
 		_exit(2);
 	}
 	if (pid>0)
-		while (pid != wait(&i))
+		while (pid != wait(&i))  // 等待2号进程执行/etc/rc完成
 			/* nothing */;
-	while (1) {
+	while (1) {  // 进入循环，监控shell进程，一旦退出则重新创建一个shell进程
 		if ((pid=fork())<0) {
 			printf("Fork failed in init\r\n");
 			continue;

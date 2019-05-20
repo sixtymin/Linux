@@ -79,10 +79,10 @@ int sys_setup(void * BIOS)
 	struct partition *p;
 	struct buffer_head * bh;
 
-	if (!callable)
+	if (!callable) // 这个系统调用只会被调用一次
 		return -1;
 	callable = 0;
-#ifndef HD_TYPE
+#ifndef HD_TYPE    // 根据从BIOS 中获取的硬盘信息，初始化 hd_info 数组
 	for (drive=0 ; drive<2 ; drive++) {
 		hd_info[drive].cyl = *(unsigned short *) BIOS;
 		hd_info[drive].head = *(unsigned char *) (2+BIOS);
@@ -124,7 +124,7 @@ int sys_setup(void * BIOS)
 
 		
 	*/
-
+	// 从 CMOS保存的磁盘信息中再一次确认磁盘数
 	if ((cmos_disks = CMOS_READ(0x12)) & 0xf0)
 		if (cmos_disks & 0x0f)
 			NR_HD = 2;
@@ -137,31 +137,31 @@ int sys_setup(void * BIOS)
 		hd[i*5].nr_sects = 0;
 	}
 	for (drive=0 ; drive<NR_HD ; drive++) {
-		if (!(bh = bread(0x300 + drive*5,0))) {
+		if (!(bh = bread(0x300 + drive*5,0))) { //0x300+drive*5 计算的设备号
 			printk("Unable to read partition table of drive %d\n\r",
 				drive);
 			panic("");
 		}
-		if (bh->b_data[510] != 0x55 || (unsigned char)
-		    bh->b_data[511] != 0xAA) {
+		// 判断第一块扇区是否具有引导标记
+		if (bh->b_data[510] != 0x55 || (unsigned char) bh->b_data[511] != 0xAA) {
 			printk("Bad partition table on drive %d\n\r",drive);
 			panic("");
 		}
 		p = 0x1BE + (void *)bh->b_data;
-		for (i=1;i<5;i++,p++) {
+		for (i=1;i<5;i++,p++) { // 读取分区表，将参数设置到hd数组中
 			hd[i+5*drive].start_sect = p->start_sect;
 			hd[i+5*drive].nr_sects = p->nr_sects;
 		}
 		brelse(bh);
 	}
 	for (i=0 ; i<5*MAX_HD ; i++)
-		hd_sizes[i] = hd[i].nr_sects>>1 ;
+		hd_sizes[i] = hd[i].nr_sects>>1 ; // 该内核中，磁盘块为1K，两个扇区，每个分区大小
 	blk_size[MAJOR_NR] = hd_sizes;
 	if (NR_HD)
 		printk("Partition table%s ok.\n\r",(NR_HD>1)?"s":"");
-	rd_load();
-	init_swapping();
-	mount_root();
+	rd_load();       // ramdisk 初始化
+	init_swapping(); // 交换分区初始化
+	mount_root();    // 加载根目录
 	return (0);
 }
 

@@ -107,7 +107,7 @@ static struct super_block * read_super(int dev)
 	check_disk_change(dev);
 	if (s = get_super(dev))
 		return s;
-	for (s = 0+super_block ;; s++) {
+	for (s = 0+super_block ;; s++) { // 找一个空的元素保存新的超级块信息
 		if (s >= NR_SUPER+super_block)
 			return NULL;
 		if (!s->s_dev)

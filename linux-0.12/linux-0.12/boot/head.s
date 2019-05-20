@@ -22,7 +22,7 @@ startup_32:
 	mov %ax,%gs
 	lss stack_start,%esp 
 	call setup_idt  
-	call setup_gdt 
+	call setup_gdt  # 重新设置GDT和IDT表，并加载到对应寄存器中
 	movl $0x10,%eax	
 	mov %ax,%ds		# after changing gdt. CS was already
 	mov %ax,%es		# reloaded in 'setup_gdt'
@@ -42,7 +42,7 @@ startup_32:
  */
 	movl %cr0,%eax		# check math chip
 	andl $0x80000011,%eax	# Save PG,PE,ET
-/* "orl $0x10020,%eax" here for 486 might be good */
+	/* "orl $0x10020,%eax" here for 486 might be good */
 	orl $2,%eax		# set MP
 	movl %eax,%cr0
 	call check_x87

@@ -214,7 +214,7 @@ void init_swapping(void)
 		printk("Swap device too small (%d blocks)\n\r",swap_size);
 		return;
 	}
-	swap_size >>= 2;
+	swap_size >>= 2; // 交换块以4K大小为单位
 	if (swap_size > SWAP_BITS)
 		swap_size = SWAP_BITS;
 	swap_bitmap = (char *) get_free_page();
@@ -222,14 +222,14 @@ void init_swapping(void)
 		printk("Unable to start swapping: out of memory :-)\n\r");
 		return;
 	}
-	read_swap_page(0,swap_bitmap);
+	read_swap_page(0,swap_bitmap); // 读取交换分区上的第一块4K，检查该块最后标识
 	if (strncmp("SWAP-SPACE",swap_bitmap+4086,10)) {
 		printk("Unable to find swap-space signature\n\r");
 		free_page((long) swap_bitmap);
 		swap_bitmap = NULL;
 		return;
 	}
-	memset(swap_bitmap+4086,0,10);
+	memset(swap_bitmap+4086,0,10); // 确保将交换位图上无效位都为0
 	for (i = 0 ; i < SWAP_BITS ; i++) {
 		if (i == 1)
 			i = swap_size;
@@ -241,7 +241,7 @@ void init_swapping(void)
 		}
 	}
 	j = 0;
-	for (i = 1 ; i < swap_size ; i++)
+	for (i = 1 ; i < swap_size ; i++) // 检查可交换页的数量
 		if (bit(swap_bitmap,i))
 			j++;
 	if (!j) {
