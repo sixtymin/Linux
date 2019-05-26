@@ -1,41 +1,12 @@
-!
-! SYS_SIZE is the number of clicks (16 bytes) to be loaded.
-! 0x3000 is 0x30000 bytes = 196kB, more than enough for current
-! versions of linux
-!
-! SYS_SIZE是要加载的内核的大小，单位是16字节，即0x3000=0x30000bytes 196KB
-!
-#include <linux/config.h>
-SYSSIZE = DEF_SYSSIZE
-!
-!	bootsect.s		(C) 1991 Linus Torvalds
-!	modified by Drew Eckhardt
-!
-! bootsect.s is loaded at 0x7c00 by the bios-startup routines, and moves
-! iself out of the way to address 0x90000, and jumps there.
-!
-! It then loads 'setup' directly after itself (0x90200), and the system
-! at 0x10000, using BIOS interrupts. 
-!
-! NOTE! currently system is at most 8*65536 bytes long. This should be no
-! problem, even in the future. I want to keep it simple. This 512 kB
-! kernel size should be enough, especially as this doesn't contain the
-! buffer cache as in minix
-!
-! The loader has been made as simple as possible, and continuos
-! read errors will result in a unbreakable loop. Reboot by hand. It
-! loads pretty fast by getting whole sectors at a time whenever possible.
-!
 ! bootsect.s 是由bios的启动例程加载到0x7c00地址处，然后将自己移动到
 ! 0x90000地址处并跳转过去继续执行
 !
 ! 然后将 setup 直接加载到其后的内存中，即0x90200开始的内存，将system模块
 ! 加载到0x10000地址处，它们都是用BIOS中断完成
-! 注意：当前的system有最长限制，即0x8000KB，这在当前和可见的未来都应该
-! 没什么问题，512KB的内核大小应该足够
-!
-! 加载器已经做的尽可能简单了，持续的读取错误将会进入无限循环中，这时需要手动
-! 重启。
+
+! NOTE! These had better be the same as in bootsect.s!
+#include <linux/config.h>
+SYSSIZE=DEF_SYSSIZE
 
 .globl begtext, begdata, begbss, endtext, enddata, endbss
 .text
@@ -52,10 +23,6 @@ INITSEG  = DEF_INITSEG	! we move boot here - out of the way 引导扇区移动�
 SETUPSEG = DEF_SETUPSEG	! setup starts here setup模块从这个段开始 0x9020
 SYSSEG   = DEF_SYSSEG	! system loaded at 0x10000 (65536).
 ENDSEG   = SYSSEG + SYSSIZE	! where to stop loading 停止加载的地方
-
-! ROOT_DEV & SWAP_DEV are now written by "build".
-ROOT_DEV = 0
-SWAP_DEV = 0
 
 entry start
 start:
@@ -80,20 +47,6 @@ go:	mov	ax,cs
 	mov	ss,ax		! put stack at 0x9ff00 - 12.
 	mov	sp,dx
 /*
- *	Many BIOS's default disk parameter tables will not 
- *	recognize multi-sector reads beyond the maximum sector number
- *	specified in the default diskette parameter tables - this may
- *	mean 7 sectors in some cases.
- *
- *	Since single sector reads are slow and out of the question,
- *	we must take care of this by creating new parameter tables
- *	(for the first disk) in RAM.  We will set the maximum sector
- *	count to 18 - the most we will encounter on an HD 1.44.  
- *
- *	High doesn't hurt.  Low does.
- *
- *	Segments are as follows: ds=es=ss=cs - INITSEG,
- *		fs = 0, gs = parameter table segment
  *  许多BIOS默认的磁盘参数表不识别超过默认磁盘参数表中指定的多扇区读取
  *  在有些情况下这个默认值可能是7
  *  由于单扇区读取慢且容易出问题，因此这里创建新的参数表（第一块磁盘）
@@ -166,9 +119,7 @@ ok_load_setup:
 ! after that (everyting loaded), we jump to
 ! the setup-routine loaded directly after
 ! the bootblock:
-idle:
-	jmp idle
-	#jmpi	0,SETUPSEG
+	jmpi	0,SETUPSEG
 
 
 print_nl:
@@ -201,32 +152,11 @@ good_digit:
 	loop	print_digit
 	ret
 
-
-/*
- * This procedure turns off the floppy drive motor, so
- * that we enter the kernel in a known state, and
- * don't have to worry about it later.
- */
-kill_motor:
-	push dx
-	mov dx,#0x3f2
-	xor al, al
-	outb
-	pop dx
-	ret
-
-sectors:
-	.word 0
-
 msg1:
 	.byte 13,10
 	.ascii "IdleOs is Loading..."
 
-.org 506
-swap_dev:
-	.word SWAP_DEV
-root_dev:
-	.word ROOT_DEV
+.org 510
 boot_flag:
 	.word 0xAA55
 
