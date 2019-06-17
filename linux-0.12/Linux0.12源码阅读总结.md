@@ -182,6 +182,11 @@ int close(int fd)
 
 
 
+**文件系统对设备的抽象**
+
+
+
+
 ### execve执行过程 ###
 
 
@@ -197,10 +202,106 @@ int close(int fd)
 
 ### 信号机制 ###
 
+信号提供了一种处理异常事件的方法，它也被称为一种软中断。在Linux 0.12中支持的信号及其含义如下表所示：
 
+| 名称 | 编号 | 含义 |       注释       |
+|------|-----|-----|-----------------|
+| SIGHUP | 1 | Hang Up | 挂断控制终端或进程 |
+| SIGINT | 2 | Interrupt | 来自键盘的中断 |
+| SIGQUIT | 3 | Quit | 来自键盘的退出 |
+| SIGILL | 4 | Illeagle | 非法指令 |
+| SIGTRAP | 5 | Trap | 跟踪断点 |
+| SIGABRT | 6 | Abort | 异常结束 |
+| SIGIOT | 6 | IO Trap | 同上 |
+| SIGUNUSED | 7 | Unused | 没有使用 |
+| SIGFPE | 8 | FPE | 协处理器出错 |
+| SIGKILL | 9 | Kill | 强迫进程终止 |
+| SIGUSR1 | 10 | User1 | 用户信号 1，进程可使用 |
+| SIGSEGV | 11 | Segment Violation | 无效内存引用 |
+| SIGUSR2 | 12 | User2 | 用户信号 2，进程可使用 |
+| SIGPIPE | 13 | Pipe | 管道写出错，无读者 |
+| SIGALRM | 14 | Alarm | 实时定时器报警 |
+| SIGTERM | 15 | Terminate | 进程终止 |
+| SIGSTKFLT | 16 | Stack Fault | 栈出错（协处理器） |
+| SIGCHLD | 17 | Child | 子进程停止或被终止 |
+| SIGCONT | 18 | Continue | 恢复进程继续执行 |
+| SIGSTOP | 19 | Stop | 停止进程的执行 |
+| SIGTSTP | 20 | TTY Stop | tty 发出停止进程，可忽略 |
+| SIGTTIN | 21 | TTY In | 后台进程请求输入 |
+| SIGTTOU | 22 | TTY Out | 后台进程请求输出 |
 
-### 文件系统对设备的抽象 ###
+在信号实现中最重要的两个函数，`signal()`和`sigaction()`，它们都用于修改信号的处理函数。`sigaction()`是实现了POSIX所提供的一种可靠处理信号的方法。`signal`是否为兼容而设置的系统调用，它内部其实与`sigaction`的实现相似。
 
+信号有三种处理方法：一是忽略信号，但是无法忽略SIGKILL和SIGSTOP两个信号；第二种是进程定义自己的信号处理程序来处理信号；其三是执行系统的默认信号处理操作，很多信号的默认处理即使终止掉进程。
+
+在内核中信号的实现方式简述如下：
+
+在任务块结构体中有如下的几个字段，它们是内核中表示进程信号的变量：
+
+```
+struct task_struct {
+    ...
+    long signal;                    // 当前发生的信号
+	struct sigaction sigaction[32]; // 信号的处理方式
+    long blocked; /* 信号的屏蔽位图 */
+    ...
+};
+```
+
+有过有信号需要发给进程，则将进程的任务控制块的`signal`变量中信号索引所对应位置位，比如进程定时到期时，就直接将`SIGALARM`对应的位置为1，代码如下所示：
+
+``` // kernel/sched.c
+void schedule(void){
+    ......
+    if ((*p)->alarm && (*p)->alarm < jiffies) {
+        (*p)->signal |= (1<<(SIGALRM-1));
+        (*p)->alarm = 0;
+    }
+    ......
+}
+```
+
+而信号的处理只有在两个时机，一个是系统调用返回时会检测是否当前进程有信号要处理，再一个是时钟中断处理后返回R3层时，也会检测。在其他的中断中就不会检测信号了，这也是防止出现问题。两块代码摘要如下：
+
+```
+system_call:
+	...
+	cmpl $0,counter(%eax)		# counter
+	je reschedule
+ret_from_sys_call:
+	movl current,%eax
+	cmpl task,%eax			# task[0] cannot have signals
+	je 3f
+	cmpw $0x0f,CS(%esp)		# was old code segment supervisor ?
+	jne 3f
+	cmpw $0x17,OLDSS(%esp)		# was stack segment = 0x17 ?
+	jne 3f
+	movl signal(%eax),%ebx
+	movl blocked(%eax),%ecx
+	notl %ecx
+	andl %ebx,%ecx
+	bsfl %ecx,%ecx
+	je 3f
+	btrl %ecx,%ebx
+	movl %ebx,signal(%eax)
+	incl %ecx
+	pushl %ecx
+	call do_signal
+	popl %ecx
+
+timer_interrupt:
+	...
+	pushl %eax
+	call do_timer		# 'do_timer(long CPL)' does everything from
+	addl $4,%esp		# task switching to accounting ...
+	jmp ret_from_sys_call
+```
+
+从这里可知只有在非任务0中，且系统调用来自于R3时才会检测信号，将signal中的信号用blocked做过滤后，查看是否有要处理信号，如果有则调用`do_signal`函数。在`do_signal`中根据任务控制块中的`sigaction`成员来确定指定信号的处理方式。如果信号设置了重启系统调用，那么则在调用信号处理函数之前要重置一下`eax`和`eip`等寄存器的值，以便重启系统调用；如果信号的处理非忽略和系统默认，则是R3调用`signal`或`sigaction`函数进行了修改，那么就要安排调用R3的处理函数。
+
+调用R3的处理函数是通过修改当前系统调用栈上的EIP来达到会到R3即调用`sa_handler`的目的，而在调用完函数后还需要无痕迹地清理栈，并且跳转回发起系统调用代码处继续执行后面的代码。这需要在修改EIP的同时将原返回地址压入R3栈，同时还包括EAX等寄存器，而这些寄存器的恢复和跳回原返回地址是由`sigaction`成员中的`sa_restorer`指针所指向代码段来完成，这个指针其实是LibC库中提供的函数，`____sig_restore`或`____masksig_restore`。
+
+如上为信号的简单总结，详细内容可以参考`signal.h`和`signal.c`两个文件中详细实现。
 
 
 By Andy @2019-06-16 14:55:21
