@@ -1,0 +1,7 @@
+ gcc-3.4
+ bin86
+ libc6-dev-i386
+ build-essential
+ libsm6:i386
+ libx11-6:i386
+ libxpm4:i386
