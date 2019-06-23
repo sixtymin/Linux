@@ -8,6 +8,6 @@ int main()
 {
 	char s[30];
 	whoami(s,30);
-	printf("%s",s);
+	printf("%s/n",s);
 	return 0;
 }
