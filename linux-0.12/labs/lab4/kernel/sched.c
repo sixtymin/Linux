@@ -58,6 +58,7 @@ extern void mem_use(void);
 
 extern int timer_interrupt(void);
 extern int system_call(void);
+extern void switch_to(struct task_struct *pnext, int ldtr_index);
 
 union task_union {
 	struct task_struct task;
@@ -78,6 +79,9 @@ struct task_struct *current = &(init_task.task);
 struct task_struct *last_task_used_math = NULL;
 
 struct task_struct * task[NR_TASKS] = {&(init_task.task), };
+
+struct tss_struct *tss = &(init_task.task.tss);
+
 
 long user_stack [ PAGE_SIZE>>2 ] ;
 
@@ -104,32 +108,6 @@ void math_state_restore()
 		__asm__("fninit"::);
 		current->used_math=1;
 	}
-}
-
-void switch_to(struct task_struct * pnext, )
-{
-
-
-	__asm__("cmpl %%ecx,current\n\t" \
-		"je 1f\n\t" \
-		// 切换 PCB
-		//
-		// TSS内核栈指针重写
-		//
-		// 切换内核栈
-		//
-		// 切换LDT
-		//
-
-		"xchgl %%ecx,current\n\t" \
-
-		"cmpl %%ecx,last_task_used_math\n\t" \
-		"jne 1f\n\t" \
-		"clts\n" \
-		"1:" \
-		::"d" (_TSS(n)),"c" ((long)pnext));
-
-	return ;
 }
 
 /*
@@ -197,7 +175,7 @@ void schedule(void)
 			fprintk(3, "%d\t%c\t%d\n", current->pid, 'J', jiffies);
 		fprintk(3, "%d\t%c\t%d\n", task[next]->pid, 'R', jiffies);
 	}
-	switch_to(pnext, next);
+	switch_to(pnext, _LDT(next));
 }
 
 int sys_pause(void)

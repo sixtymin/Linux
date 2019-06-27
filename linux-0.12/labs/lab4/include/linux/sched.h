@@ -110,6 +110,7 @@ struct task_struct {
 	long signal;
 	struct sigaction sigaction[32];
 	long blocked;	/* bitmap of masked signals */
+	long kernelstack;
 /* various fields */
 	int exit_code;
 	unsigned long start_code,end_code,end_data,brk,start_stack;
@@ -154,8 +155,8 @@ struct task_struct {
  * your own risk!. Base=0, limit=0x9ffff (=640kB)
  */
 #define INIT_TASK \
-/* state etc */	{ 0,15,15, \
-/* signals */	0,{{},},0, \
+/* state etc */	{ 0,15,15,\
+/* signals */	0,{{},},0,PAGE_SIZE+(long)&init_task, \
 /* ec,brk... */	0,0,0,0,0,0, \
 /* pid etc.. */	0,0,0,0, \
 /* suppl grps*/ {NOGROUP,}, \
@@ -181,7 +182,7 @@ struct task_struct {
 		{} \
 	}, \
 }
-
+	
 extern struct task_struct *task[NR_TASKS];
 extern struct task_struct *last_task_used_math;
 extern struct task_struct *current;

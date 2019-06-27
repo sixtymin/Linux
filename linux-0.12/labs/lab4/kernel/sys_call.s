@@ -47,12 +47,15 @@ EFLAGS		= 0x28
 OLDESP		= 0x2C
 OLDSS		= 0x30
 
+ESP0 = 4
+
 state	= 0		# these are offsets into the task-struct.
 counter	= 4
 priority = 8
 signal	= 12
 sigaction = 16		# MUST be 16 (=len of sigaction)
 blocked = (33*16)
+kernelstack = (33*16 + 4)
 
 # offsets within sigaction
 sa_handler = 0
@@ -64,6 +67,9 @@ nr_system_calls = 84
 
 ENOSYS = 38
 
+# tss ESP0
+ESP0 = 0x4
+
 /*
  * Ok, I get parallel printer interrupts while using the floppy for some
  * strange reason. Urgel. Now I just ignore them.
@@ -71,6 +77,7 @@ ENOSYS = 38
 .globl system_call,sys_fork,timer_interrupt,sys_execve
 .globl hd_interrupt,floppy_interrupt,parallel_interrupt
 .globl device_not_available, coprocessor_error
+.globl switch_to, first_return_from_kernel
 
 .align 4
 bad_sys_call:
@@ -298,3 +305,53 @@ parallel_interrupt:
 	outb %al,$0x20
 	popl %eax
 	iret
+
+switch_to:
+	pushl %ebp
+	movl %esp, %ebp
+	pushl %ecx
+	pushl %ebx
+	pushl %eax
+	movl 8(%ebp), %ebx
+	cmpl %ebx,current
+	je 1f
+	# mov next task to current	
+	movl %ebx, %eax
+	xchgl %eax, current
+	
+	# set next task kernelstack to tss->esp0 
+	# for syscall or interrupts handle
+	movl tss, %ecx
+	addl $4096, %ebx
+	movl %ebx, ESP0(%ecx)
+	
+	# switch stack
+	movl %esp, kernelstack(%eax)
+	movl 8(%ebp), %ebx
+	movl kernelstack(%ebx), %esp
+	
+	# load ldtr 
+	movl 12(%ebp), %ecx
+	lldt %cx
+	movl $0x17, %ecx
+	mov %cx, %fs
+	cmpl %ecx, last_task_used_math
+	jne 1f
+	clts
+1:  popl %eax
+	popl %ebx
+	popl %ecx
+	popl %ebp
+	ret
+
+first_return_from_kernel:
+	popl %edx
+	popl %edi
+	popl %esi
+	pop %gs
+	pop %fs
+	pop %es
+	pop %ds
+	iret
+
+
