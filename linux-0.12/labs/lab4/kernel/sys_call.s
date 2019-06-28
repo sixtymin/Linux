@@ -313,7 +313,7 @@ switch_to:
 	pushl %ebx
 	pushl %eax
 	movl 8(%ebp), %ebx
-	cmpl %ebx,current
+	cmpl %ebx, current
 	je 1f
 	# mov next task to current	
 	movl %ebx, %eax
@@ -335,7 +335,7 @@ switch_to:
 	lldt %cx
 	movl $0x17, %ecx
 	mov %cx, %fs
-	cmpl %ecx, last_task_used_math
+	cmpl %eax, last_task_used_math
 	jne 1f
 	clts
 1:  popl %eax
