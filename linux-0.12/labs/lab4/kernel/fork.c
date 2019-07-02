@@ -115,7 +115,7 @@ int copy_process(int nr,long ebp,long edi,long esi,long gs,long none,
 	p->tss.gs = gs & 0xffff;
 	p->tss.ldt = _LDT(nr);
 	p->tss.trace_bitmap = 0x80000000;
-	*/
+    */	
 	krnstack = (long*)(PAGE_SIZE + (long)p);
 	*(--krnstack) = ss & 0xffff;
 	*(--krnstack) = esp;
